@@ -1,0 +1,37 @@
+export const APP_NAME = 'Lishnu Tech CRM';
+
+export const ROUTES = {
+  login: '/login',
+  register: '/register',
+  forgotPassword: '/forgot-password',
+  admin: {
+    root: '/admin',
+    overview: '/admin/overview',
+    vendors: '/admin/vendors',
+    branches: '/admin/branches',
+    sales: '/admin/sales',
+    memberships: '/admin/memberships',
+    membershipDetail: (id: string) => `/admin/memberships/${id}`,
+    customers: '/admin/customers',
+    search: '/admin/search',
+    leads: '/admin/leads',
+    leadDetail: (id: string) => `/admin/leads/${id}`,
+    appointments: '/admin/appointments',
+    settlements: '/admin/settlements',
+    settings: '/admin/settings',
+  },
+  vendor: {
+    root: '/vendor',
+    branches: '/vendor/branches',
+    sales: '/vendor/sales',
+    memberships: '/vendor/memberships',
+    membershipDetail: (id: string) => `/vendor/memberships/${id}`,
+    customers: '/vendor/customers',
+    search: '/vendor/search',
+    leads: '/vendor/leads',
+    leadDetail: (id: string) => `/vendor/leads/${id}`,
+    appointments: '/vendor/appointments',
+    settlements: '/vendor/settlements',
+    profile: '/vendor/profile',
+  },
+} as const;

@@ -1,0 +1,16 @@
+import { apiRequest } from './client';
+import type { Branch } from '../types/crm';
+
+export async function getBranches(): Promise<{ success: boolean; branches?: Branch[]; message?: string }> {
+  const r = await apiRequest<{ branches: Branch[] }>('/branches');
+  if (r.success && 'branches' in r) return { success: true, branches: (r as { branches: Branch[] }).branches };
+  return { success: false, message: (r as { message?: string }).message };
+}
+
+export async function createBranch(data: { name: string; code?: string; address?: string }) {
+  return apiRequest<{ branch: Branch }>('/branches', { method: 'POST', body: JSON.stringify(data) });
+}
+
+export async function updateBranch(id: string, data: Partial<Branch>) {
+  return apiRequest<{ branch: Branch }>(`/branches/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
+}
