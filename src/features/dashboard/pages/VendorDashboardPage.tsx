@@ -1,7 +1,24 @@
+import { useEffect, useState } from 'react';
 import { useAuth } from '../../../auth/hooks/useAuth';
+import { getBranches } from '../../../api/branches';
 
 export default function VendorDashboardPage() {
   const { user } = useAuth();
+  const [branchCount, setBranchCount] = useState<number | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    setLoading(true);
+    getBranches().then((res) => {
+      if (cancelled) return;
+      setLoading(false);
+      if (res.success && res.branches != null) setBranchCount(res.branches.length);
+    }).catch(() => {
+      if (!cancelled) setLoading(false);
+    });
+    return () => { cancelled = true; };
+  }, []);
 
   return (
     <div className="dashboard-content">
@@ -11,11 +28,11 @@ export default function VendorDashboardPage() {
       </section>
       <div className="stats-grid">
         <div className="stat-card">
-          <span className="stat-value">—</span>
+          <span className="stat-value">{loading ? '…' : branchCount ?? '—'}</span>
           <span className="stat-label">My Branches</span>
         </div>
         <div className="stat-card">
-          <span className="stat-value">—</span>
+          <span className="stat-value">{branchCount != null ? branchCount : '—'}</span>
           <span className="stat-label">Active</span>
         </div>
         <div className="stat-card">

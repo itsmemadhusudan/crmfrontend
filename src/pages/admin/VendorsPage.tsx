@@ -1,1 +1,1 @@
-export { default } from '../../features/settings/pages/UsersPage';
+export { default } from '../AdminVendors';
