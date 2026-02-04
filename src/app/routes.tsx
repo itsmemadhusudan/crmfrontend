@@ -25,6 +25,8 @@ import {
   AppointmentsPage as AdminAppointmentsPage,
   SettlementsPage as AdminSettlementsPage,
   SettingsPage as AdminSettingsPage,
+  AdminProfilePage,
+  LoyaltyPage as AdminLoyaltyPage,
 } from '../pages/admin';
 
 // Vendor pages – from pages/vendor folder
@@ -41,6 +43,7 @@ import {
   AppointmentsPage as VendorAppointmentsPage,
   SettlementsPage as VendorSettlementsPage,
   VendorProfilePage,
+  LoyaltyPage as VendorLoyaltyPage,
 } from '../pages/vendor';
 
 export function AppRoutes() {
@@ -60,7 +63,7 @@ export function AppRoutes() {
         path={ROUTES.admin.root}
         element={
           <RequireAuth allowedRoles={['admin']}>
-            <DashboardLayout title="Admin Dashboard" />
+            <DashboardLayout title="Owner Dashboard" />
           </RequireAuth>
         }
       >
@@ -77,7 +80,9 @@ export function AppRoutes() {
         <Route path="leads/:id" element={<AdminLeadDetailPage />} />
         <Route path="appointments" element={<AdminAppointmentsPage />} />
         <Route path="settlements" element={<AdminSettlementsPage />} />
+        <Route path="loyalty" element={<AdminLoyaltyPage />} />
         <Route path="settings" element={<AdminSettingsPage />} />
+        <Route path="profile" element={<AdminProfilePage />} />
       </Route>
 
       {/* Vendor routes: fully protected, vendor role only + approval guard */}
@@ -85,7 +90,7 @@ export function AppRoutes() {
         path={ROUTES.vendor.root}
         element={
           <RequireAuth allowedRoles={['vendor']}>
-            <DashboardLayout title="Vendor Dashboard" />
+            <DashboardLayout title="Branch Dashboard" />
           </RequireAuth>
         }
       >
@@ -101,6 +106,7 @@ export function AppRoutes() {
           <Route path="leads/:id" element={<VendorLeadDetailPage />} />
           <Route path="appointments" element={<VendorAppointmentsPage />} />
           <Route path="settlements" element={<VendorSettlementsPage />} />
+          <Route path="loyalty" element={<VendorLoyaltyPage />} />
           <Route path="profile" element={<VendorProfilePage />} />
         </Route>
       </Route>

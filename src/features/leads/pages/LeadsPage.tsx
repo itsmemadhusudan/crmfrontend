@@ -1,14 +1,17 @@
 import { useEffect, useState } from 'react';
 import { getLeads } from '../../../api/leads';
+import { getLeadStatuses } from '../../../api/leadStatuses';
 import { getBranches } from '../../../api/branches';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import { Link } from 'react-router-dom';
 import type { Lead, Branch } from '../../../types/common';
+import type { LeadStatusItem } from '../../../api/leadStatuses';
 
 export default function LeadsPage() {
   const { user } = useAuth();
   const [leads, setLeads] = useState<Lead[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [leadStatuses, setLeadStatuses] = useState<LeadStatusItem[]>([]);
   const [branchId, setBranchId] = useState('');
   const [status, setStatus] = useState('');
   const [loading, setLoading] = useState(true);
@@ -18,6 +21,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     if (isAdmin) getBranches().then((r) => r.success && r.branches && setBranches(r.branches));
+    getLeadStatuses().then((r) => r.success && r.leadStatuses && setLeadStatuses(r.leadStatuses));
   }, [isAdmin]);
 
   useEffect(() => {
@@ -43,11 +47,9 @@ export default function LeadsPage() {
           )}
           <select value={status} onChange={(e) => setStatus(e.target.value)} className="filter-btn">
             <option value="">All statuses</option>
-            <option value="new">New</option>
-            <option value="contacted">Contacted</option>
-            <option value="qualified">Qualified</option>
-            <option value="booked">Booked</option>
-            <option value="lost">Lost</option>
+            {leadStatuses.length > 0
+              ? leadStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)
+              : ['New', 'Contacted', 'Call not Connected', 'Follow up', 'Booked', 'Lost'].map((name) => <option key={name} value={name}>{name}</option>)}
           </select>
         </div>
         {error && <div className="auth-error vendors-error">{error}</div>}
@@ -68,7 +70,7 @@ export default function LeadsPage() {
                     <td>{l.phone || '—'}</td>
                     <td>{l.source}</td>
                     {isAdmin && <td>{l.branch || '—'}</td>}
-                    <td><span className={`status-badge status-${l.status === 'booked' ? 'approved' : l.status === 'lost' ? 'rejected' : 'pending'}`}>{l.status}</span></td>
+                    <td><span className={`status-badge status-${l.status === 'Booked' ? 'approved' : l.status === 'Lost' ? 'rejected' : 'pending'}`}>{l.status}</span></td>
                     <td>{l.followUpsCount ?? (l.followUps?.length || 0)}</td>
                     <td>{new Date(l.createdAt).toLocaleDateString()}</td>
                     <td><Link to={`${basePath}/leads/${l.id}`}>View</Link></td>

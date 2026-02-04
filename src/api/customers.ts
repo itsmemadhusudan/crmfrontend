@@ -18,3 +18,20 @@ export async function createCustomer(data: { name: string; phone: string; email?
 export async function updateCustomer(id: string, data: Partial<Customer>) {
   return apiRequest<{ customer: Customer }>(`/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
+
+export interface VisitHistoryItem {
+  type: 'appointment' | 'membership_usage';
+  id: string;
+  date: string;
+  service: string;
+  branch?: string;
+  branchId?: string;
+  staff?: string;
+  creditsUsed?: number;
+}
+
+export async function getCustomerVisitHistory(customerId: string): Promise<{ success: boolean; visitHistory?: VisitHistoryItem[]; message?: string }> {
+  const r = await apiRequest<{ visitHistory: VisitHistoryItem[] }>(`/customers/${customerId}/visit-history`);
+  if (r.success && 'visitHistory' in r) return { success: true, visitHistory: (r as { visitHistory: VisitHistoryItem[] }).visitHistory };
+  return { success: false, message: (r as { message?: string }).message };
+}

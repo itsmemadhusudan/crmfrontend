@@ -14,3 +14,8 @@ export async function createBranch(data: { name: string; code?: string; address?
 export async function updateBranch(id: string, data: Partial<Branch>) {
   return apiRequest<{ branch: Branch }>(`/branches/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
+
+export async function deleteBranch(id: string): Promise<{ success: boolean; message?: string }> {
+  const r = await apiRequest<{ message?: string }>(`/branches/${id}`, { method: 'DELETE' });
+  return r.success ? { success: true } : { success: false, message: (r as { message?: string }).message };
+}

@@ -13,6 +13,7 @@ interface AuthContextValue {
   login: (email: string, password: string) => Promise<{ success: boolean; message?: string; user?: User }>;
   register: (data: { name: string; email: string; password: string; role?: Role; vendorName?: string }) => Promise<{ success: boolean; message?: string; user?: User }>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -40,18 +41,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const logout = useCallback(() => persistAuth(null, null), [persistAuth]);
 
+  const refreshUser = useCallback(async () => {
+    if (!token) return;
+    const res = await authApi.getMe();
+    if (res.success && res.user) {
+      setUser(res.user);
+      localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+    }
+  }, [token]);
+
   useEffect(() => {
     if (!token) {
       setIsLoading(false);
       return;
     }
-    authApi.getMe().then((res) => {
-      if (res.success && res.user) {
-        setUser(res.user);
-        localStorage.setItem(USER_KEY, JSON.stringify(res.user));
-      } else logout();
-      setIsLoading(false);
-    });
+    authApi
+      .getMe()
+      .then((res) => {
+        if (res.success && res.user) {
+          setUser(res.user);
+          localStorage.setItem(USER_KEY, JSON.stringify(res.user));
+        } else logout();
+        setIsLoading(false);
+      })
+      .catch(() => {
+        setIsLoading(false);
+        logout();
+      });
   }, [token, logout]);
 
   const login = useCallback(
@@ -88,6 +104,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         login,
         register,
         logout,
+        refreshUser,
       }}
     >
       {children}

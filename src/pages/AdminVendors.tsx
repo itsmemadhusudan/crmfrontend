@@ -1,16 +1,28 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getVendors, approveVendor, rejectVendor } from '../api/vendors';
+import { getVendors, getVendor, approveVendor, rejectVendor, updateVendor } from '../api/vendors';
+import { getBranches } from '../api/branches';
 import type { VendorListItem, ApprovalStatus } from '../types/auth';
+import type { Branch } from '../types/crm';
 
 type FilterStatus = 'all' | ApprovalStatus;
 
 export default function AdminVendors() {
   const [vendors, setVendors] = useState<VendorListItem[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
   const [filter, setFilter] = useState<FilterStatus>('all');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actioningId, setActioningId] = useState<string | null>(null);
   const [selectedVendor, setSelectedVendor] = useState<VendorListItem | null>(null);
+  const [vendorDetail, setVendorDetail] = useState<VendorListItem | null>(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [editingVendor, setEditingVendor] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editEmail, setEditEmail] = useState('');
+  const [editVendorName, setEditVendorName] = useState('');
+  const [editBranchId, setEditBranchId] = useState('');
+  const [editError, setEditError] = useState('');
+  const [editSaving, setEditSaving] = useState(false);
 
   async function loadVendors() {
     setLoading(true);
@@ -26,7 +38,32 @@ export default function AdminVendors() {
     loadVendors();
   }, [filter]);
 
-  const closeModal = useCallback(() => setSelectedVendor(null), []);
+  const closeModal = useCallback(() => {
+    setSelectedVendor(null);
+    setVendorDetail(null);
+    setEditingVendor(false);
+    setEditError('');
+  }, []);
+
+  useEffect(() => {
+    getBranches().then((r) => { if (r.success && r.branches) setBranches(r.branches); });
+  }, []);
+
+  useEffect(() => {
+    if (!selectedVendor) return;
+    setDetailLoading(true);
+    setVendorDetail(null);
+    getVendor(selectedVendor.id).then((r) => {
+      setDetailLoading(false);
+      if (r.success && r.vendor) {
+        setVendorDetail(r.vendor);
+        setEditName(r.vendor.name);
+        setEditEmail(r.vendor.email);
+        setEditVendorName(r.vendor.vendorName || '');
+        setEditBranchId(r.vendor.branchId || '');
+      }
+    });
+  }, [selectedVendor?.id]);
 
   useEffect(() => {
     if (!selectedVendor) return;
@@ -63,6 +100,28 @@ export default function AdminVendors() {
   function handleRejectFromModal(id: string) {
     handleReject(id);
   }
+
+  const handleSaveVendorEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!selectedVendor) return;
+    setEditError('');
+    setEditSaving(true);
+    const res = await updateVendor(selectedVendor.id, {
+      name: editName.trim(),
+      email: editEmail.trim().toLowerCase(),
+      vendorName: editVendorName.trim() || undefined,
+      branchId: editBranchId || null,
+    });
+    setEditSaving(false);
+    if (res.success && res.vendor) {
+      setVendorDetail(res.vendor);
+      setEditingVendor(false);
+      loadVendors();
+      setSelectedVendor((prev) => prev && prev.id === selectedVendor.id ? { ...prev, ...res.vendor } : prev);
+    } else {
+      setEditError(res.message || 'Failed to update vendor');
+    }
+  };
 
   const pendingCount = filter === 'all' ? vendors.filter((v) => v.approvalStatus === 'pending').length : 0;
 
@@ -201,41 +260,115 @@ export default function AdminVendors() {
                 ×
               </button>
             </div>
-            <dl className="vendor-detail-dl">
-              <dt>Name</dt>
-              <dd>{selectedVendor.name}</dd>
-              <dt>Email</dt>
-              <dd>{selectedVendor.email}</dd>
-              <dt>Vendor / business name</dt>
-              <dd>{selectedVendor.vendorName || '—'}</dd>
-              <dt>Status</dt>
-              <dd>
-                <span className={`status-badge status-${selectedVendor.approvalStatus}`}>
-                  {selectedVendor.approvalStatus}
-                </span>
-              </dd>
-              <dt>Registered</dt>
-              <dd>{new Date(selectedVendor.createdAt).toLocaleString()}</dd>
-            </dl>
-            {selectedVendor.approvalStatus === 'pending' && (
-              <div className="vendor-modal-actions">
-                <button
-                  type="button"
-                  className="btn-approve"
-                  onClick={() => handleApproveFromModal(selectedVendor.id)}
-                  disabled={actioningId !== null}
-                >
-                  {actioningId === selectedVendor.id ? '…' : 'Approve'}
-                </button>
-                <button
-                  type="button"
-                  className="btn-reject"
-                  onClick={() => handleRejectFromModal(selectedVendor.id)}
-                  disabled={actioningId !== null}
-                >
-                  {actioningId === selectedVendor.id ? '…' : 'Reject'}
-                </button>
+            {detailLoading ? (
+              <div className="vendors-loading" style={{ padding: '1.5rem' }}>
+                <div className="spinner" />
+                <span>Loading details…</span>
               </div>
+            ) : editingVendor ? (
+              <form onSubmit={handleSaveVendorEdit} className="vendor-modal-edit-form">
+                {editError && <div className="auth-error vendors-error">{editError}</div>}
+                <label className="auth-form-label">
+                  <span>Name</span>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    className="appointment-form-input"
+                    required
+                  />
+                </label>
+                <label className="auth-form-label">
+                  <span>Email</span>
+                  <input
+                    type="email"
+                    value={editEmail}
+                    onChange={(e) => setEditEmail(e.target.value)}
+                    className="appointment-form-input"
+                    required
+                  />
+                </label>
+                <label className="auth-form-label">
+                  <span>Vendor / business name</span>
+                  <input
+                    type="text"
+                    value={editVendorName}
+                    onChange={(e) => setEditVendorName(e.target.value)}
+                    className="appointment-form-input"
+                  />
+                </label>
+                <label className="auth-form-label">
+                  <span>Branch</span>
+                  <select
+                    value={editBranchId}
+                    onChange={(e) => setEditBranchId(e.target.value)}
+                    className="appointment-form-input"
+                  >
+                    <option value="">No branch</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </label>
+                <div className="vendor-modal-actions">
+                  <button type="button" className="filter-btn" onClick={() => setEditingVendor(false)}>Cancel</button>
+                  <button type="submit" className="btn-primary" disabled={editSaving}>
+                    {editSaving ? 'Saving…' : 'Save'}
+                  </button>
+                </div>
+              </form>
+            ) : vendorDetail ? (
+              <>
+                <dl className="vendor-detail-dl">
+                  <dt>Name</dt>
+                  <dd>{vendorDetail.name}</dd>
+                  <dt>Email</dt>
+                  <dd>{vendorDetail.email}</dd>
+                  <dt>Vendor / business name</dt>
+                  <dd>{vendorDetail.vendorName || '—'}</dd>
+                  <dt>Branch</dt>
+                  <dd>{vendorDetail.branchName || '—'}</dd>
+                  <dt>Status</dt>
+                  <dd>
+                    <span className={`status-badge status-${vendorDetail.approvalStatus}`}>
+                      {vendorDetail.approvalStatus}
+                    </span>
+                  </dd>
+                  <dt>Registered</dt>
+                  <dd>{new Date(vendorDetail.createdAt).toLocaleString()}</dd>
+                </dl>
+                <div className="vendor-modal-actions">
+                  <button
+                    type="button"
+                    className="filter-btn"
+                    onClick={() => setEditingVendor(true)}
+                  >
+                    Edit vendor
+                  </button>
+                  {vendorDetail.approvalStatus === 'pending' && (
+                    <>
+                      <button
+                        type="button"
+                        className="btn-approve"
+                        onClick={() => handleApproveFromModal(vendorDetail.id)}
+                        disabled={actioningId !== null}
+                      >
+                        {actioningId === vendorDetail.id ? '…' : 'Approve'}
+                      </button>
+                      <button
+                        type="button"
+                        className="btn-reject"
+                        onClick={() => handleRejectFromModal(vendorDetail.id)}
+                        disabled={actioningId !== null}
+                      >
+                        Reject
+                      </button>
+                    </>
+                  )}
+                </div>
+              </>
+            ) : (
+              <p className="vendors-empty">Could not load vendor details.</p>
             )}
           </div>
         </div>

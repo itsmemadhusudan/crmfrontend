@@ -41,3 +41,25 @@ export async function rejectVendor(id: string): Promise<ApproveRejectResponse> {
   }
   return { success: false, message: (result as { message?: string }).message };
 }
+
+export async function getVendor(id: string): Promise<{ success: boolean; vendor?: VendorListItem; message?: string }> {
+  const result = await apiRequest<{ vendor: VendorListItem }>(`/vendors/${id}`);
+  if (result.success && 'vendor' in result) {
+    return { success: true, vendor: (result as { vendor: VendorListItem }).vendor };
+  }
+  return { success: false, message: (result as { message?: string }).message };
+}
+
+export async function updateVendor(
+  id: string,
+  data: { name?: string; email?: string; vendorName?: string; branchId?: string | null }
+): Promise<ApproveRejectResponse> {
+  const result = await apiRequest<{ vendor: VendorListItem }>(`/vendors/${id}`, {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (result.success && 'vendor' in result) {
+    return { success: true, vendor: (result as { vendor: VendorListItem }).vendor };
+  }
+  return { success: false, message: (result as { message?: string }).message };
+}

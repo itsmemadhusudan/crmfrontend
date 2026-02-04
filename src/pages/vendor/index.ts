@@ -10,3 +10,4 @@ export { default as LeadDetailPage } from './LeadDetailPage';
 export { default as AppointmentsPage } from './AppointmentsPage';
 export { default as SettlementsPage } from './SettlementsPage';
 export { default as VendorProfilePage } from './VendorProfilePage';
+export { default as LoyaltyPage } from './LoyaltyPage';

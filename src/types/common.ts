@@ -101,6 +101,7 @@ export interface OwnerOverviewBranch {
   membershipsSold: number;
   leads: number;
   leadsBooked: number;
+  leadConversion?: number;
   appointmentsThisMonth: number;
   appointmentsCompleted: number;
 }

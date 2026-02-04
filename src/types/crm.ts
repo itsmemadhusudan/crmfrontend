@@ -63,6 +63,15 @@ export interface Lead {
   createdAt: string;
 }
 
+export interface Service {
+  id: string;
+  name: string;
+  category?: string;
+  branch?: string;
+  durationMinutes?: number;
+  price?: number;
+}
+
 export interface Appointment {
   id: string;
   customer?: { id: string; name: string; phone: string } | null;
@@ -70,6 +79,7 @@ export interface Appointment {
   branchId?: string;
   staff?: string;
   service?: string;
+  serviceId?: string;
   scheduledAt: string;
   status: string;
   notes?: string;

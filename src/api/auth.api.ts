@@ -39,3 +39,25 @@ export async function getMe(): Promise<{ success: boolean; user?: User; message?
   if (r.success && 'user' in r) return { success: true, user: r.user as User };
   return { success: false, message: r.message };
 }
+
+export async function updateProfile(data: {
+  name?: string;
+  email?: string;
+  vendorName?: string;
+}): Promise<{ success: boolean; user?: User; message?: string }> {
+  const r = await http<{ user: User }>('/auth/profile', {
+    method: 'PATCH',
+    body: JSON.stringify(data),
+  });
+  if (r.success && 'user' in r) return { success: true, user: r.user as User };
+  return { success: false, message: r.message };
+}
+
+export async function updatePassword(currentPassword: string, newPassword: string): Promise<{ success: boolean; message?: string }> {
+  const r = await http<Record<string, never>>('/auth/password', {
+    method: 'PATCH',
+    body: JSON.stringify({ currentPassword, newPassword }),
+  });
+  if (r.success) return { success: true };
+  return { success: false, message: r.message };
+}

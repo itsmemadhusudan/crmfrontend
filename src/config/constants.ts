@@ -1,4 +1,4 @@
-export const APP_NAME = 'Lishnu Tech CRM';
+export const APP_NAME = 'Kally Threading – Multi-Branch CRM';
 
 export const ROUTES = {
   login: '/login',
@@ -18,7 +18,9 @@ export const ROUTES = {
     leadDetail: (id: string) => `/admin/leads/${id}`,
     appointments: '/admin/appointments',
     settlements: '/admin/settlements',
+    loyalty: '/admin/loyalty',
     settings: '/admin/settings',
+    profile: '/admin/profile',
   },
   vendor: {
     root: '/vendor',
@@ -32,6 +34,7 @@ export const ROUTES = {
     leadDetail: (id: string) => `/vendor/leads/${id}`,
     appointments: '/vendor/appointments',
     settlements: '/vendor/settlements',
+    loyalty: '/vendor/loyalty',
     profile: '/vendor/profile',
   },
 } as const;

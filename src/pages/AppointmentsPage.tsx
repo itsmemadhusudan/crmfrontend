@@ -1,69 +1,233 @@
-import { useEffect, useState } from 'react';
-import { getAppointments } from '../api/appointments';
+import { useCallback, useEffect, useState } from 'react';
+import { getAppointments, createAppointment, updateAppointment } from '../api/appointments';
 import { getBranches } from '../api/branches';
-import { useAuth } from '../auth/hooks/useAuth';
-import type { Appointment } from '../types/crm';
-import type { Branch } from '../types/crm';
+import { getCustomers } from '../api/customers';
+import { getServices } from '../api/services';
+import { useBranch } from '../hooks/useBranch';
+import type { Appointment, Branch, Customer, Service } from '../types/crm';
+
+function loadList(
+  setLoading: (v: boolean) => void,
+  setError: (v: string) => void,
+  setAppointments: (a: Appointment[]) => void,
+  effectiveBranchId: string | undefined,
+  date: string
+) {
+  setLoading(true);
+  setError('');
+  getAppointments({ branchId: effectiveBranchId, date }).then((r) => {
+    setLoading(false);
+    if (r.success && r.appointments != null) setAppointments(r.appointments);
+    else setError(r.message || 'Failed to load appointments');
+  });
+}
 
 export default function AppointmentsPage() {
-  const { user } = useAuth();
+  const { branchId: userBranchId, isAdmin } = useBranch();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
+  const [services, setServices] = useState<Service[]>([]);
   const [branchId, setBranchId] = useState('');
   const [date, setDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const isAdmin = user?.role === 'admin';
+  const [bookOpen, setBookOpen] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [formError, setFormError] = useState('');
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+
+  const effectiveBranchId = isAdmin ? (branchId || undefined) : (userBranchId || undefined);
+
+  const refetch = useCallback(() => {
+    loadList(setLoading, setError, setAppointments, effectiveBranchId, date);
+  }, [effectiveBranchId, date]);
 
   useEffect(() => {
-    if (isAdmin) getBranches().then((r) => r.success && r.branches && setBranches(r.branches));
-  }, [isAdmin]);
+    if (isAdmin) {
+      getBranches().then((r) => { if (r.success && r.branches) setBranches(r.branches); });
+    } else if (userBranchId) {
+      setBranchId(userBranchId);
+    }
+  }, [isAdmin, userBranchId]);
 
   useEffect(() => {
-    setLoading(true);
-    getAppointments({ branchId: branchId || undefined, date }).then((r) => {
-      setLoading(false);
-      if (r.success && r.appointments) setAppointments(r.appointments);
-      else setError(r.message || 'Failed to load');
+    loadList(setLoading, setError, setAppointments, effectiveBranchId, date);
+  }, [effectiveBranchId, date]);
+
+  useEffect(() => {
+    if (!bookOpen) return;
+    getCustomers().then((r) => { if (r.success && r.customers) setCustomers(r.customers); });
+    getServices(effectiveBranchId || undefined).then((r) => { if (r.success && r.services) setServices(r.services || []); });
+  }, [bookOpen, effectiveBranchId]);
+
+  const [formCustomerId, setFormCustomerId] = useState('');
+  const [formBranchId, setFormBranchId] = useState('');
+  const [formServiceId, setFormServiceId] = useState('');
+  const [formDate, setFormDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [formTime, setFormTime] = useState('09:00');
+  const [formNotes, setFormNotes] = useState('');
+
+  const openBook = () => {
+    setFormError('');
+    setFormCustomerId('');
+    setFormBranchId(effectiveBranchId || '');
+    setFormServiceId('');
+    setFormDate(new Date().toISOString().slice(0, 10));
+    setFormTime('09:00');
+    setFormNotes('');
+    setBookOpen(true);
+  };
+
+  const closeBook = () => {
+    setBookOpen(false);
+    setFormError('');
+  };
+
+  const handleBookSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formCustomerId.trim()) {
+      setFormError('Please select a customer.');
+      return;
+    }
+    const scheduledAt = new Date(`${formDate}T${formTime}:00`).toISOString();
+    const branchIdToUse = isAdmin ? (formBranchId || undefined) : (userBranchId || undefined);
+    if (!branchIdToUse && isAdmin) {
+      setFormError('Please select a branch.');
+      return;
+    }
+    setSubmitting(true);
+    setFormError('');
+    createAppointment({
+      customerId: formCustomerId,
+      branchId: branchIdToUse,
+      serviceId: formServiceId || undefined,
+      scheduledAt,
+      status: 'scheduled',
+      notes: formNotes || undefined,
+    }).then((r) => {
+      setSubmitting(false);
+      if (r.success) {
+        closeBook();
+        refetch();
+      } else {
+        setFormError(r.message || 'Failed to book appointment');
+      }
     });
-  }, [branchId, date]);
+  };
+
+  const handleStatusChange = (appointmentId: string, newStatus: string) => {
+    setUpdatingId(appointmentId);
+    updateAppointment(appointmentId, { status: newStatus }).then((r) => {
+      setUpdatingId(null);
+      if (r.success) refetch();
+    });
+  };
+
+  const completed = appointments.filter((a) => a.status === 'completed').length;
+  const pending = appointments.filter((a) => ['scheduled', 'confirmed'].includes(a.status)).length;
 
   return (
     <div className="dashboard-content">
       <section className="content-card">
-        <h2>Appointments</h2>
-        <p>Book, reschedule, and manage appointments per branch and staff.</p>
-        <div className="vendors-filters" style={{ marginTop: '1rem' }}>
+        <div className="appointments-page-header">
+          <div>
+            <h2>Appointments</h2>
+            <p className="appointments-subtitle">Book, reschedule, and manage appointments. Vendors can open appointments based on customer demand.</p>
+          </div>
+          <button type="button" className="btn-primary appointments-book-btn" onClick={openBook}>
+            Book appointment
+          </button>
+        </div>
+        <div className="appointments-filters">
           {isAdmin && (
-            <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="filter-btn">
+            <select
+              value={branchId}
+              onChange={(e) => setBranchId(e.target.value)}
+              className="filter-btn appointments-select"
+              aria-label="Filter by branch"
+            >
               <option value="">All branches</option>
-              {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+              {branches.map((b) => (
+                <option key={b.id} value={b.id}>{b.name}</option>
+              ))}
             </select>
           )}
-          <label style={{ display: 'inline-flex', alignItems: 'center', gap: '0.5rem' }}>
-            <span>Date</span>
-            <input type="date" value={date} onChange={(e) => setDate(e.target.value)} className="filter-btn" style={{ padding: '0.5rem' }} />
+          <label className="appointments-date-label">
+            <span className="appointments-date-label-text">Date</span>
+            <input
+              type="date"
+              value={date}
+              onChange={(e) => setDate(e.target.value)}
+              className="filter-btn appointments-date-input"
+              aria-label="Appointment date"
+            />
           </label>
         </div>
+        {!loading && appointments.length > 0 && (
+          <p className="appointments-stats">
+            <span className="appointments-stat">{appointments.length} total</span>
+            {pending > 0 && <span className="appointments-stat">{pending} scheduled</span>}
+            {completed > 0 && <span className="appointments-stat">{completed} completed</span>}
+          </p>
+        )}
         {error && <div className="auth-error vendors-error">{error}</div>}
         {loading ? (
-          <div className="vendors-loading"><div className="spinner" /><span>Loading...</span></div>
+          <div className="vendors-loading">
+            <div className="spinner" />
+            <span>Loading appointments…</span>
+          </div>
         ) : appointments.length === 0 ? (
-          <p className="vendors-empty">No appointments for this date.</p>
+          <p className="vendors-empty">No appointments for this date. Click “Book appointment” to add one.</p>
         ) : (
-          <div className="vendors-table-wrap" style={{ marginTop: '1rem' }}>
-            <table className="vendors-table">
+          <div className="appointments-table-wrap">
+            <table className="vendors-table appointments-table">
               <thead>
-                <tr><th>Customer</th><th>Branch</th><th>Service</th><th>Time</th><th>Status</th></tr>
+                <tr>
+                  <th>Customer</th>
+                  <th>Branch</th>
+                  <th>Service</th>
+                  <th>Time</th>
+                  <th>Status</th>
+                  <th>Actions</th>
+                </tr>
               </thead>
               <tbody>
                 {appointments.map((a) => (
                   <tr key={a.id}>
-                    <td>{a.customer?.name || '—'} {a.customer?.phone && `(${a.customer.phone})`}</td>
+                    <td>{a.customer?.name || '—'}{a.customer?.phone ? ` (${a.customer.phone})` : ''}</td>
                     <td>{a.branch || '—'}</td>
                     <td>{a.service || '—'}</td>
-                    <td>{a.scheduledAt ? new Date(a.scheduledAt).toLocaleTimeString() : '—'}</td>
-                    <td><span className={`status-badge status-${a.status === 'completed' ? 'approved' : a.status === 'no-show' || a.status === 'cancelled' ? 'rejected' : 'pending'}`}>{a.status}</span></td>
+                    <td>{a.scheduledAt ? new Date(a.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
+                    <td>
+                      <span className={`status-badge status-${a.status === 'completed' ? 'approved' : a.status === 'no-show' || a.status === 'cancelled' ? 'rejected' : 'pending'}`}>
+                        {a.status}
+                      </span>
+                    </td>
+                    <td>
+                      {['scheduled', 'confirmed'].includes(a.status) && (
+                        <div className="appointments-row-actions">
+                          <button
+                            type="button"
+                            className="btn-approve appointments-action-btn"
+                            onClick={() => handleStatusChange(a.id, 'completed')}
+                            disabled={updatingId !== null}
+                            title="Mark completed"
+                          >
+                            {updatingId === a.id ? '…' : 'Complete'}
+                          </button>
+                          <button
+                            type="button"
+                            className="btn-reject appointments-action-btn"
+                            onClick={() => handleStatusChange(a.id, 'cancelled')}
+                            disabled={updatingId !== null}
+                            title="Cancel"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      )}
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -71,6 +235,111 @@ export default function AppointmentsPage() {
           </div>
         )}
       </section>
+
+      {bookOpen && (
+        <div
+          className="vendor-modal-backdrop appointment-modal-backdrop"
+          onClick={closeBook}
+          role="presentation"
+        >
+          <div
+            className="vendor-modal appointment-book-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="appointment-book-title"
+          >
+            <div className="vendor-modal-header">
+              <h2 id="appointment-book-title">Book appointment</h2>
+              <button type="button" className="vendor-modal-close" onClick={closeBook} aria-label="Close">×</button>
+            </div>
+            <form onSubmit={handleBookSubmit} className="appointment-book-form">
+              {formError && <div className="auth-error vendors-error">{formError}</div>}
+              <label className="auth-form-label">
+                <span>Customer *</span>
+                <select
+                  value={formCustomerId}
+                  onChange={(e) => setFormCustomerId(e.target.value)}
+                  className="appointments-select appointment-form-input"
+                  required
+                >
+                  <option value="">Select customer</option>
+                  {customers.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} {c.phone ? `(${c.phone})` : ''}</option>
+                  ))}
+                </select>
+              </label>
+              {isAdmin && (
+                <label className="auth-form-label">
+                  <span>Branch *</span>
+                  <select
+                    value={formBranchId}
+                    onChange={(e) => setFormBranchId(e.target.value)}
+                    className="appointments-select appointment-form-input"
+                    required
+                  >
+                    <option value="">Select branch</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className="auth-form-label">
+                <span>Service (optional)</span>
+                <select
+                  value={formServiceId}
+                  onChange={(e) => setFormServiceId(e.target.value)}
+                  className="appointments-select appointment-form-input"
+                >
+                  <option value="">No service</option>
+                  {services.map((s) => (
+                    <option key={s.id} value={s.id}>{s.name}{s.durationMinutes ? ` (${s.durationMinutes} min)` : ''}</option>
+                  ))}
+                </select>
+              </label>
+              <div className="appointment-form-datetime">
+                <label className="auth-form-label">
+                  <span>Date *</span>
+                  <input
+                    type="date"
+                    value={formDate}
+                    onChange={(e) => setFormDate(e.target.value)}
+                    className="appointment-form-input"
+                    required
+                  />
+                </label>
+                <label className="auth-form-label">
+                  <span>Time *</span>
+                  <input
+                    type="time"
+                    value={formTime}
+                    onChange={(e) => setFormTime(e.target.value)}
+                    className="appointment-form-input"
+                    required
+                  />
+                </label>
+              </div>
+              <label className="auth-form-label">
+                <span>Notes (optional)</span>
+                <textarea
+                  value={formNotes}
+                  onChange={(e) => setFormNotes(e.target.value)}
+                  className="appointment-form-input appointment-form-notes"
+                  rows={2}
+                  placeholder="Customer request or notes"
+                />
+              </label>
+              <div className="appointment-form-actions">
+                <button type="button" className="filter-btn" onClick={closeBook}>Cancel</button>
+                <button type="submit" className="btn-primary" disabled={submitting}>
+                  {submitting ? 'Booking…' : 'Book appointment'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -22,11 +22,25 @@ export async function getSettlements(): Promise<{ success: boolean; settlements?
   return { success: false, message: (r as { message?: string }).message };
 }
 
-export async function getOwnerOverview(): Promise<{ success: boolean; overview?: OwnerOverviewBranch[]; branches?: { id: string; name: string }[]; message?: string }> {
-  const r = await apiRequest<{ overview: OwnerOverviewBranch[]; branches: { id: string; name: string }[] }>('/reports/owner-overview');
+export interface SettlementSummaryItem {
+  fromBranch: string;
+  toBranch: string;
+  fromBranchId: string;
+  toBranchId: string;
+  amount: number;
+}
+
+export async function getOwnerOverview(): Promise<{
+  success: boolean;
+  overview?: OwnerOverviewBranch[];
+  branches?: { id: string; name: string }[];
+  settlementSummary?: SettlementSummaryItem[];
+  message?: string;
+}> {
+  const r = await apiRequest<{ overview: OwnerOverviewBranch[]; branches: { id: string; name: string }[]; settlementSummary?: SettlementSummaryItem[] }>('/reports/owner-overview');
   if (r.success && 'overview' in r) {
-    const d = r as unknown as { overview: OwnerOverviewBranch[]; branches: { id: string; name: string }[] };
-    return { success: true, overview: d.overview, branches: d.branches };
+    const d = r as unknown as { overview: OwnerOverviewBranch[]; branches: { id: string; name: string }[]; settlementSummary?: SettlementSummaryItem[] };
+    return { success: true, overview: d.overview, branches: d.branches, settlementSummary: d.settlementSummary };
   }
   return { success: false, message: (r as { message?: string }).message };
 }

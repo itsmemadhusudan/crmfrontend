@@ -19,6 +19,8 @@ export interface VendorListItem {
   email: string;
   vendorName?: string;
   approvalStatus: ApprovalStatus;
+  branchId?: string | null;
+  branchName?: string | null;
   createdAt: string;
 }
 

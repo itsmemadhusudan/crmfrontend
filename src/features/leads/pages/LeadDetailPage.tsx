@@ -1,19 +1,26 @@
 import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getLead, updateLead, addFollowUp } from '../../../api/leads';
+import { getLeadStatuses } from '../../../api/leadStatuses';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import type { Lead } from '../../../types/common';
+import type { LeadStatusItem } from '../../../api/leadStatuses';
 
 export default function LeadDetailPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user } = useAuth();
   const [lead, setLead] = useState<Lead | null>(null);
+  const [leadStatuses, setLeadStatuses] = useState<LeadStatusItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [followUpNote, setFollowUpNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const basePath = user?.role === 'admin' ? '/admin' : '/vendor';
+
+  useEffect(() => {
+    getLeadStatuses().then((r) => r.success && r.leadStatuses && setLeadStatuses(r.leadStatuses));
+  }, []);
 
   useEffect(() => {
     if (!id) return;
@@ -75,14 +82,15 @@ export default function LeadDetailPage() {
           <dd>{lead!.branch || '—'}</dd>
           <dt>Status</dt>
           <dd>
-            <span className={`status-badge status-${lead!.status === 'booked' ? 'approved' : lead!.status === 'lost' ? 'rejected' : 'pending'}`}>{lead!.status}</span>
+            <span className={`status-badge status-${lead!.status === 'Booked' ? 'approved' : lead!.status === 'Lost' ? 'rejected' : 'pending'}`}>{lead!.status}</span>
             {' '}
             <select value={lead!.status} onChange={(e) => handleStatusChange(e.target.value)} className="filter-btn" style={{ marginLeft: '0.5rem' }}>
-              <option value="new">New</option>
-              <option value="contacted">Contacted</option>
-              <option value="qualified">Qualified</option>
-              <option value="booked">Booked</option>
-              <option value="lost">Lost</option>
+              {leadStatuses.length > 0
+                ? leadStatuses.map((s) => <option key={s.id} value={s.name}>{s.name}</option>)
+                : ['New', 'Contacted', 'Call not Connected', 'Follow up', 'Booked', 'Lost'].map((name) => <option key={name} value={name}>{name}</option>)}
+              {leadStatuses.length > 0 && !leadStatuses.some((s) => s.name === lead!.status) && (
+                <option value={lead!.status}>{lead!.status}</option>
+              )}
             </select>
           </dd>
           <dt>Notes</dt>

@@ -12,3 +12,5 @@ export { default as LeadDetailPage } from './LeadDetailPage';
 export { default as AppointmentsPage } from './AppointmentsPage';
 export { default as SettlementsPage } from './SettlementsPage';
 export { default as SettingsPage } from './SettingsPage';
+export { default as AdminProfilePage } from './ProfilePage';
+export { default as LoyaltyPage } from './LoyaltyPage';

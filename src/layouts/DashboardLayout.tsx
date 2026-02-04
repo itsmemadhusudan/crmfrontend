@@ -12,10 +12,10 @@ interface NavItem {
   icon?: string;
 }
 
-const adminNav: NavItem[] = [
+const ownerNav: NavItem[] = [
   { to: ROUTES.admin.root, label: 'Dashboard', icon: '📊' },
-  { to: ROUTES.admin.overview, label: 'Owner overview', icon: '👁' },
-  { to: ROUTES.admin.vendors, label: 'Vendors', icon: '🏪' },
+  { to: ROUTES.admin.overview, label: 'All branches overview', icon: '👁' },
+  { to: ROUTES.admin.vendors, label: 'Staff', icon: '👤' },
   { to: ROUTES.admin.branches, label: 'Branches', icon: '📍' },
   { to: ROUTES.admin.sales, label: 'Sales dashboard', icon: '💰' },
   { to: ROUTES.admin.memberships, label: 'Memberships', icon: '🎫' },
@@ -23,11 +23,13 @@ const adminNav: NavItem[] = [
   { to: ROUTES.admin.search, label: 'Search', icon: '🔍' },
   { to: ROUTES.admin.leads, label: 'Leads inbox', icon: '📥' },
   { to: ROUTES.admin.appointments, label: 'Appointments', icon: '📅' },
-  { to: ROUTES.admin.settlements, label: 'Settlements', icon: '📋' },
+  { to: ROUTES.admin.settlements, label: 'Cross-branch settlements', icon: '📋' },
+  { to: ROUTES.admin.loyalty, label: 'Loyalty', icon: '⭐' },
   { to: ROUTES.admin.settings, label: 'Settings', icon: '⚙️' },
+  { to: ROUTES.admin.profile, label: 'Profile', icon: '👤' },
 ];
 
-const vendorNav: NavItem[] = [
+const branchNav: NavItem[] = [
   { to: ROUTES.vendor.root, label: 'Dashboard', icon: '📊' },
   { to: ROUTES.vendor.branches, label: 'My branch', icon: '📍' },
   { to: ROUTES.vendor.sales, label: 'Sales', icon: '💰' },
@@ -37,6 +39,7 @@ const vendorNav: NavItem[] = [
   { to: ROUTES.vendor.leads, label: 'Leads inbox', icon: '📥' },
   { to: ROUTES.vendor.appointments, label: 'Appointments', icon: '📅' },
   { to: ROUTES.vendor.settlements, label: 'Settlements', icon: '📋' },
+  { to: ROUTES.vendor.loyalty, label: 'Loyalty', icon: '⭐' },
   { to: ROUTES.vendor.profile, label: 'Profile', icon: '👤' },
 ];
 
@@ -48,8 +51,8 @@ interface DashboardLayoutProps {
 export function DashboardLayout({ title, navItems: navItemsProp }: DashboardLayoutProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { user } = useAuthStore();
-  const navItems = navItemsProp ?? (user?.role === 'admin' ? adminNav : vendorNav);
-  const displayTitle = title || (user?.role === 'admin' ? 'Admin Dashboard' : 'Vendor Dashboard');
+  const navItems = navItemsProp ?? (user?.role === 'admin' ? ownerNav : branchNav);
+  const displayTitle = title || (user?.role === 'admin' ? 'Owner Dashboard' : 'Branch Dashboard');
 
   return (
     <div className="dashboard">
