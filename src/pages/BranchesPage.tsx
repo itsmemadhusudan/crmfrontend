@@ -87,18 +87,18 @@ export default function BranchesPage() {
 
   return (
     <div className="dashboard-content">
+      <header className="page-hero">
+        <h1 className="page-hero-title">{isAdmin ? 'Branches' : 'My branch'}</h1>
+        <p className="page-hero-subtitle">{isAdmin ? 'Manage all branches. View, edit, or delete a branch.' : 'Your assigned branch.'}</p>
+      </header>
       <section className="content-card">
-        <div className="vendors-header">
-          <h2>{isAdmin ? 'Branches' : 'My branch'}</h2>
-          <p className="vendors-subtitle">{isAdmin ? 'Manage all branches. View, edit, or delete a branch.' : 'Your assigned branch.'}</p>
-          {isAdmin && (
-            <button type="button" className="auth-submit" style={{ marginTop: '1rem', width: 'auto' }} onClick={() => setShowForm(!showForm)}>
-              {showForm ? 'Cancel' : 'Add branch'}
-            </button>
-          )}
-        </div>
+        {isAdmin && (
+          <button type="button" className="auth-submit" style={{ marginBottom: '1rem', width: 'auto' }} onClick={() => setShowForm(!showForm)}>
+            {showForm ? 'Cancel' : 'Add branch'}
+          </button>
+        )}
         {showForm && (
-          <form onSubmit={handleCreate} className="auth-form" style={{ marginTop: '1rem', maxWidth: '400px' }}>
+          <form onSubmit={handleCreate} className="auth-form" style={{ marginBottom: '1rem', maxWidth: '400px' }}>
             <label><span>Name</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Tacoma" required /></label>
             <label><span>Code (optional)</span><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. TAC" /></label>
             <label><span>Address (optional)</span><input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" /></label>
@@ -106,35 +106,40 @@ export default function BranchesPage() {
           </form>
         )}
         {error && <div className="auth-error vendors-error">{error}</div>}
-        <div className="vendors-table-wrap branch-table-wrap" style={{ marginTop: '1rem' }}>
-          <table className="vendors-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                {isAdmin && <th>Code</th>}
-                <th>Address</th>
-                {isAdmin && <th className="th-actions">Actions</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {branches.map((b) => (
-                <tr key={b.id}>
-                  <td>{b.name}</td>
-                  {isAdmin && <td>{b.code || '—'}</td>}
-                  <td>{b.address || '—'}</td>
-                  {isAdmin && (
-                    <td className="branch-actions">
-                      <button type="button" className="branch-action-btn branch-action-view" onClick={() => setViewingBranch(b)} title="View">View</button>
-                      <button type="button" className="branch-action-btn branch-action-edit" onClick={() => openEdit(b)} title="Edit">Edit</button>
-                      <button type="button" className="branch-action-btn branch-action-delete" onClick={() => setDeletingBranchId(b.id)} title="Delete">Delete</button>
-                    </td>
-                  )}
+        {branches.length > 0 ? (
+          <div className="data-table-wrap">
+            <table className="data-table">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  {isAdmin && <th>Code</th>}
+                  <th>Address</th>
+                  {isAdmin && <th className="th-actions">Actions</th>}
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-        {branches.length === 0 && <p className="vendors-empty">No branches.</p>}
+              </thead>
+              <tbody>
+                {branches.map((b) => (
+                  <tr key={b.id}>
+                    <td><strong>{b.name}</strong></td>
+                    {isAdmin && <td>{b.code || '—'}</td>}
+                    <td>{b.address || '—'}</td>
+                    {isAdmin && (
+                      <td className="branch-actions">
+                        <button type="button" className="branch-action-btn branch-action-view" onClick={() => setViewingBranch(b)} title="View">View</button>
+                        <button type="button" className="branch-action-btn branch-action-edit" onClick={() => openEdit(b)} title="Edit">Edit</button>
+                        <button type="button" className="branch-action-btn branch-action-delete" onClick={() => setDeletingBranchId(b.id)} title="Delete">Delete</button>
+                      </td>
+                    )}
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <p className="vendors-empty">
+            {isAdmin ? 'No branches.' : 'You don’t have a branch assigned yet. Contact your admin to get assigned to a branch.'}
+          </p>
+        )}
       </section>
 
       {viewingBranch && (

@@ -12,6 +12,8 @@ export interface Customer {
   email?: string;
   membershipCardId?: string;
   primaryBranch?: string;
+  customerPackage?: string;
+  customerPackagePrice?: number;
   notes?: string;
   createdAt?: string;
 }

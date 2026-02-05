@@ -2,7 +2,6 @@ export const APP_NAME = 'Kally Threading – Multi-Branch CRM';
 
 export const ROUTES = {
   login: '/login',
-  register: '/register',
   forgotPassword: '/forgot-password',
   admin: {
     root: '/admin',

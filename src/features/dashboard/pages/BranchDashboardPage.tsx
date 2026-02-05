@@ -36,9 +36,11 @@ export default function BranchDashboardPage() {
 
   return (
     <div className="dashboard-content">
+      <header className="page-hero">
+        <h1 className="page-hero-title">Sales dashboard</h1>
+        <p className="page-hero-subtitle">Revenue and memberships by branch, date range, and service category.</p>
+      </header>
       <section className="content-card">
-        <h2>Sales dashboard</h2>
-        <p>Revenue, memberships, and filters by branch, date, and service.</p>
         <div className="sales-filters">
           {isAdmin && (
             <label>
@@ -65,35 +67,64 @@ export default function BranchDashboardPage() {
           <div className="vendors-loading"><div className="spinner" /><span>Loading...</span></div>
         ) : data && (
           <>
-            <div className="stats-grid">
-              <div className="stat-card">
-                <span className="stat-value">{data.totalRevenue}</span>
-                <span className="stat-label">Total revenue</span>
+            <div className="owner-hero-stats" style={{ marginTop: '1rem', marginBottom: '1.5rem' }}>
+              <div className="owner-hero-stat">
+                <span className="owner-hero-stat-value">{data.totalRevenue}</span>
+                <span className="owner-hero-stat-label">Total revenue</span>
               </div>
-              <div className="stat-card">
-                <span className="stat-value">{data.totalMemberships}</span>
-                <span className="stat-label">Memberships sold</span>
+              <div className="owner-hero-stat">
+                <span className="owner-hero-stat-value">{data.totalMemberships}</span>
+                <span className="owner-hero-stat-label">Memberships sold</span>
               </div>
             </div>
             {data.byBranch && data.byBranch.length > 0 && (
-              <div className="report-section">
-                <h3>By branch</h3>
-                <ul className="report-list">
-                  {data.byBranch.map((x) => (
-                    <li key={x.branch}><strong>{x.branch}</strong>: {x.revenue}</li>
-                  ))}
-                </ul>
+              <div className="page-section">
+                <h2 className="page-section-title">By branch</h2>
+                <div className="data-table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Branch</th>
+                        <th className="num">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.byBranch.map((x) => (
+                        <tr key={x.branch}>
+                          <td><strong>{x.branch}</strong></td>
+                          <td className="num">{x.revenue}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
             {data.byService && data.byService.length > 0 && (
-              <div className="report-section">
-                <h3>By service category</h3>
-                <ul className="report-list">
-                  {data.byService.map((x) => (
-                    <li key={x.serviceCategory}><strong>{x.serviceCategory}</strong>: {x.revenue}</li>
-                  ))}
-                </ul>
+              <div className="page-section">
+                <h2 className="page-section-title">By service category</h2>
+                <div className="data-table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Service category</th>
+                        <th className="num">Revenue</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {data.byService.map((x) => (
+                        <tr key={x.serviceCategory}>
+                          <td><strong>{x.serviceCategory}</strong></td>
+                          <td className="num">{x.revenue}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
+            )}
+            {(!data.byBranch || data.byBranch.length === 0) && (!data.byService || data.byService.length === 0) && (
+              <p className="vendors-empty">No breakdown data for the selected filters.</p>
             )}
           </>
         )}

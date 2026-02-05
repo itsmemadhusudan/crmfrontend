@@ -1,9 +1,10 @@
-import { useState } from 'react';
+import { useState, Suspense } from 'react';
 import { Outlet } from 'react-router-dom';
 import { useAuthStore } from '../auth/auth.store';
 import { Sidebar } from './components/Sidebar';
 import { Topbar } from './components/Topbar';
 import { ProfileMenu } from './components/ProfileMenu';
+import { PageLoader } from '../components/ui/PageLoader';
 import { ROUTES } from '../config/constants';
 
 interface NavItem {
@@ -61,7 +62,9 @@ export function DashboardLayout({ title, navItems: navItemsProp }: DashboardLayo
       </Topbar>
       <Sidebar title={displayTitle} navItems={navItems} open={sidebarOpen} onClose={() => setSidebarOpen(false)} />
       <main className="dashboard-main">
-        <Outlet />
+        <Suspense fallback={<PageLoader />}>
+          <Outlet />
+        </Suspense>
       </main>
     </div>
   );

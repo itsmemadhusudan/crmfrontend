@@ -23,6 +23,7 @@ export default function AdminVendors() {
   const [editBranchId, setEditBranchId] = useState('');
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
+  const [assigningBranchId, setAssigningBranchId] = useState<string | null>(null);
 
   async function loadVendors() {
     setLoading(true);
@@ -101,6 +102,15 @@ export default function AdminVendors() {
     handleReject(id);
   }
 
+  async function handleAssignBranch(vendorId: string, branchId: string | null) {
+    setAssigningBranchId(vendorId);
+    setError('');
+    const res = await updateVendor(vendorId, { branchId: branchId || null });
+    setAssigningBranchId(null);
+    if (res.success) loadVendors();
+    else setError(res.message || 'Failed to assign branch');
+  }
+
   const handleSaveVendorEdit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!selectedVendor) return;
@@ -130,7 +140,7 @@ export default function AdminVendors() {
       <section className="content-card">
         <div className="vendors-header">
           <h2>Vendor management</h2>
-          <p className="vendors-subtitle">Approve or reject vendor registrations.</p>
+          <p className="vendors-subtitle">Approve vendors and assign each vendor to a branch. Vendors only see data for their assigned branch.</p>
         </div>
 
         <div className="vendors-filters">
@@ -181,6 +191,7 @@ export default function AdminVendors() {
                   <th>Name</th>
                   <th>Email</th>
                   <th>Vendor name</th>
+                  <th>Branch</th>
                   <th>Status</th>
                   <th>Registered</th>
                   <th>Actions</th>
@@ -200,6 +211,22 @@ export default function AdminVendors() {
                     </td>
                     <td>{v.email}</td>
                     <td>{v.vendorName || '—'}</td>
+                    <td>
+                      <select
+                        value={v.branchId ?? ''}
+                        onChange={(e) => handleAssignBranch(v.id, e.target.value || null)}
+                        disabled={assigningBranchId !== null}
+                        className="vendor-branch-select"
+                        aria-label={`Assign branch for ${v.name}`}
+                        title="Assign branch – vendor will only see this branch"
+                      >
+                        <option value="">No branch assigned</option>
+                        {branches.map((b) => (
+                          <option key={b.id} value={b.id}>{b.name}</option>
+                        ))}
+                      </select>
+                      {assigningBranchId === v.id && <span className="vendor-branch-saving"> …</span>}
+                    </td>
                     <td>
                       <span className={`status-badge status-${v.approvalStatus}`}>
                         {v.approvalStatus}
@@ -298,17 +325,19 @@ export default function AdminVendors() {
                   />
                 </label>
                 <label className="auth-form-label">
-                  <span>Branch</span>
+                  <span>Assign branch</span>
                   <select
                     value={editBranchId}
                     onChange={(e) => setEditBranchId(e.target.value)}
                     className="appointment-form-input"
+                    aria-label="Assign branch to vendor"
                   >
-                    <option value="">No branch</option>
+                    <option value="">No branch assigned</option>
                     {branches.map((b) => (
                       <option key={b.id} value={b.id}>{b.name}</option>
                     ))}
                   </select>
+                  <span className="text-muted" style={{ display: 'block', marginTop: '0.25rem', fontSize: '0.85rem' }}>Vendor will only see data for this branch.</span>
                 </label>
                 <div className="vendor-modal-actions">
                   <button type="button" className="filter-btn" onClick={() => setEditingVendor(false)}>Cancel</button>

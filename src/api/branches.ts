@@ -1,8 +1,9 @@
 import { apiRequest } from './client';
 import type { Branch } from '../types/crm';
 
-export async function getBranches(): Promise<{ success: boolean; branches?: Branch[]; message?: string }> {
-  const r = await apiRequest<{ branches: Branch[] }>('/branches');
+export async function getBranches(opts?: { all?: boolean }): Promise<{ success: boolean; branches?: Branch[]; message?: string }> {
+  const query = opts?.all ? '?all=1' : '';
+  const r = await apiRequest<{ branches: Branch[] }>(`/branches${query}`);
   if (r.success && 'branches' in r) return { success: true, branches: (r as { branches: Branch[] }).branches };
   return { success: false, message: (r as { message?: string }).message };
 }

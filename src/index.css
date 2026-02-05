@@ -44,6 +44,17 @@
   --theme-border-accent: rgba(79, 70, 229, 0.2);
 }
 
+/* Dropdown options: visible in both themes (dark = light text on dark bg, light = dark text on light bg) */
+select option {
+  background-color: #1e293b;
+  color: #f1f5f9;
+}
+
+[data-theme="light"] select option {
+  background-color: #ffffff;
+  color: #0f172a;
+}
+
 body {
   margin: 0;
   min-width: 320px;

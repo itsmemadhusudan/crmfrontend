@@ -33,10 +33,12 @@ export default function MembershipsList() {
 
   return (
     <div className="dashboard-content">
+      <header className="page-hero">
+        <h1 className="page-hero-title">Memberships</h1>
+        <p className="page-hero-subtitle">Membership records and usage history. Track where sold and where used.</p>
+      </header>
       <section className="content-card">
-        <h2>Memberships</h2>
-        <p>Membership records and usage history. Track where sold and where used.</p>
-        <div className="vendors-filters" style={{ marginTop: '1rem' }}>
+        <div className="vendors-filters" style={{ marginBottom: '1rem' }}>
           {isAdmin && (
             <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="filter-btn">
               <option value="">All branches</option>
@@ -56,13 +58,13 @@ export default function MembershipsList() {
         ) : memberships.length === 0 ? (
           <p className="vendors-empty">No memberships found.</p>
         ) : (
-          <div className="vendors-table-wrap" style={{ marginTop: '1rem' }}>
-            <table className="vendors-table">
+          <div className="data-table-wrap">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Customer</th>
                   <th>Type</th>
-                  <th>Total / Used / Remaining</th>
+                  <th className="num">Total / Used / Remaining</th>
                   <th>Sold at</th>
                   <th>Purchase date</th>
                   <th>Status</th>
@@ -72,9 +74,9 @@ export default function MembershipsList() {
               <tbody>
                 {memberships.map((m) => (
                   <tr key={m.id}>
-                    <td>{m.customer?.name || '—'} {m.customer?.phone && `(${m.customer.phone})`}</td>
+                    <td><strong>{m.customer?.name || '—'}</strong> {m.customer?.phone && `(${m.customer.phone})`}</td>
                     <td>{m.typeName || '—'}</td>
-                    <td>{m.totalCredits} / {m.usedCredits} / {(m.remainingCredits ?? m.totalCredits - m.usedCredits)}</td>
+                    <td className="num">{m.totalCredits} / {m.usedCredits} / {(m.remainingCredits ?? m.totalCredits - m.usedCredits)}</td>
                     <td>{m.soldAtBranch || '—'}</td>
                     <td>{m.purchaseDate ? new Date(m.purchaseDate).toLocaleDateString() : '—'}</td>
                     <td><span className={`status-badge status-${m.status === 'active' ? 'approved' : m.status === 'used' ? 'rejected' : 'pending'}`}>{m.status}</span></td>

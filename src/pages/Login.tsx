@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Link, useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../auth/hooks/useAuth';
 
 export default function Login() {
@@ -65,9 +65,6 @@ export default function Login() {
             {loading ? 'Signing in...' : 'Sign in'}
           </button>
         </form>
-        <p className="auth-footer">
-          Don't have an account? <Link to="/register">Register</Link>
-        </p>
       </div>
     </div>
   );

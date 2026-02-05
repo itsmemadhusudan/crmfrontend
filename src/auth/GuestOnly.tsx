@@ -3,8 +3,8 @@ import { useAuthStore } from './auth.store';
 import { ROUTES } from '../config/constants';
 
 /**
- * Layout for auth-only routes (login, register). Redirects authenticated users
- * to their dashboard so they cannot access login/register when already logged in.
+ * Layout for auth-only routes (login, forgot password). Redirects authenticated users
+ * to their dashboard so they cannot access these when already logged in.
  */
 export function GuestOnly() {
   const { isAuthenticated, isLoading, user } = useAuthStore();

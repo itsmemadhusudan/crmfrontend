@@ -103,7 +103,6 @@ export default function AppointmentsPage() {
       branchId: branchIdToUse,
       serviceId: formServiceId || undefined,
       scheduledAt,
-      status: 'scheduled',
       notes: formNotes || undefined,
     }).then((r) => {
       setSubmitting(false);
@@ -116,29 +115,35 @@ export default function AppointmentsPage() {
     });
   };
 
-  const handleStatusChange = (appointmentId: string, newStatus: string) => {
+  const handleStatusChange = useCallback((appointmentId: string, newStatus: string) => {
     setUpdatingId(appointmentId);
+    setAppointments((prev) =>
+      prev.map((a) => (a.id === appointmentId ? { ...a, status: newStatus } : a))
+    );
     updateAppointment(appointmentId, { status: newStatus }).then((r) => {
       setUpdatingId(null);
       if (r.success) refetch();
     });
-  };
+  }, [refetch]);
 
   const completed = appointments.filter((a) => a.status === 'completed').length;
-  const pending = appointments.filter((a) => ['scheduled', 'confirmed'].includes(a.status)).length;
+  const pending = appointments.filter((a) => ['pending', 'scheduled', 'confirmed', 'accepted'].includes(a.status)).length;
+  const canChangeStatus = isAdmin;
 
   return (
     <div className="dashboard-content">
-      <section className="content-card">
-        <div className="appointments-page-header">
-          <div>
-            <h2>Appointments</h2>
-            <p className="appointments-subtitle">Book, reschedule, and manage appointments. Vendors can open appointments based on customer demand.</p>
-          </div>
-          <button type="button" className="btn-primary appointments-book-btn" onClick={openBook}>
-            Book appointment
-          </button>
+      <header className="page-hero" style={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: '1rem' }}>
+        <div>
+          <h1 className="page-hero-title">Appointments</h1>
+          <p className="page-hero-subtitle">
+            {isAdmin ? 'Book appointments, accept, reject, or mark as completed.' : 'Create and view appointments for your branch.'}
+          </p>
         </div>
+        <button type="button" className="btn-primary appointments-book-btn" onClick={openBook}>
+          Book appointment
+        </button>
+      </header>
+      <section className="content-card">
         <div className="appointments-filters">
           {isAdmin && (
             <select
@@ -167,7 +172,7 @@ export default function AppointmentsPage() {
         {!loading && appointments.length > 0 && (
           <p className="appointments-stats">
             <span className="appointments-stat">{appointments.length} total</span>
-            {pending > 0 && <span className="appointments-stat">{pending} scheduled</span>}
+            {pending > 0 && <span className="appointments-stat">{pending} pending</span>}
             {completed > 0 && <span className="appointments-stat">{completed} completed</span>}
           </p>
         )}
@@ -180,8 +185,8 @@ export default function AppointmentsPage() {
         ) : appointments.length === 0 ? (
           <p className="vendors-empty">No appointments for this date. Click “Book appointment” to add one.</p>
         ) : (
-          <div className="appointments-table-wrap">
-            <table className="vendors-table appointments-table">
+          <div className="data-table-wrap">
+            <table className="data-table">
               <thead>
                 <tr>
                   <th>Customer</th>
@@ -189,7 +194,7 @@ export default function AppointmentsPage() {
                   <th>Service</th>
                   <th>Time</th>
                   <th>Status</th>
-                  <th>Actions</th>
+                  {canChangeStatus && <th>Actions</th>}
                 </tr>
               </thead>
               <tbody>
@@ -200,34 +205,45 @@ export default function AppointmentsPage() {
                     <td>{a.service || '—'}</td>
                     <td>{a.scheduledAt ? new Date(a.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '—'}</td>
                     <td>
-                      <span className={`status-badge status-${a.status === 'completed' ? 'approved' : a.status === 'no-show' || a.status === 'cancelled' ? 'rejected' : 'pending'}`}>
+                      <span className={`status-badge status-${a.status === 'completed' ? 'approved' : a.status === 'rejected' || a.status === 'no-show' || a.status === 'cancelled' ? 'rejected' : 'pending'}`}>
                         {a.status}
                       </span>
                     </td>
-                    <td>
-                      {['scheduled', 'confirmed'].includes(a.status) && (
-                        <div className="appointments-row-actions">
-                          <button
-                            type="button"
-                            className="btn-approve appointments-action-btn"
-                            onClick={() => handleStatusChange(a.id, 'completed')}
-                            disabled={updatingId !== null}
-                            title="Mark completed"
-                          >
-                            {updatingId === a.id ? '…' : 'Complete'}
-                          </button>
-                          <button
-                            type="button"
-                            className="btn-reject appointments-action-btn"
-                            onClick={() => handleStatusChange(a.id, 'cancelled')}
-                            disabled={updatingId !== null}
-                            title="Cancel"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      )}
-                    </td>
+                    {canChangeStatus && (
+                      <td>
+                        {['pending', 'scheduled', 'confirmed', 'accepted'].includes(a.status) && (
+                          <div className="appointments-row-actions">
+                            <button
+                              type="button"
+                              className="btn-approve appointments-action-btn"
+                              onClick={() => handleStatusChange(a.id, 'accepted')}
+                              disabled={updatingId !== null}
+                              title="Accept"
+                            >
+                              {updatingId === a.id ? '…' : 'Accept'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-primary appointments-action-btn"
+                              onClick={() => handleStatusChange(a.id, 'completed')}
+                              disabled={updatingId !== null}
+                              title="Mark completed"
+                            >
+                              Complete
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-reject appointments-action-btn"
+                              onClick={() => handleStatusChange(a.id, 'rejected')}
+                              disabled={updatingId !== null}
+                              title="Reject"
+                            >
+                              Reject
+                            </button>
+                          </div>
+                        )}
+                      </td>
+                    )}
                   </tr>
                 ))}
               </tbody>

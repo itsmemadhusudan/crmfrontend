@@ -120,27 +120,27 @@ export default function LoyaltyPage() {
 
   return (
     <div className="dashboard-content">
-      <section className="content-card loyalty-intro">
-        <h2>Loyalty program</h2>
-        <p>See repeated customers and those who upgrade memberships, then search to manage points.</p>
-      </section>
+      <header className="page-hero">
+        <h1 className="page-hero-title">Loyalty program</h1>
+        <p className="page-hero-subtitle">See repeated customers and those who upgrade memberships, then search to manage points.</p>
+      </header>
 
       <div className="loyalty-insights-grid">
-        <section className="content-card loyalty-insights-card">
-          <h3>Repeated customers</h3>
+        <section className="content-card page-section">
+          <h2 className="page-section-title">Repeated customers</h2>
           <p className="loyalty-card-desc">Customers with 2+ completed visits (appointments).</p>
           {insightsLoading ? (
             <p className="text-muted">Loading...</p>
           ) : repeatedCustomers.length === 0 ? (
             <p className="text-muted">No repeated customers yet.</p>
           ) : (
-            <div className="loyalty-table-wrap">
-              <table className="loyalty-table">
+            <div className="data-table-wrap">
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th>Customer</th>
                     <th>Phone</th>
-                    <th>Visits</th>
+                    <th className="num">Visits</th>
                     <th>Last visit</th>
                   </tr>
                 </thead>
@@ -149,7 +149,7 @@ export default function LoyaltyPage() {
                     <tr key={row.customerId}>
                       <td><strong>{row.customerName}</strong></td>
                       <td>{row.phone}</td>
-                      <td>{row.visitCount}</td>
+                      <td className="num">{row.visitCount}</td>
                       <td>{formatDate(row.lastVisitAt)}</td>
                     </tr>
                   ))}
@@ -159,21 +159,21 @@ export default function LoyaltyPage() {
           )}
         </section>
 
-        <section className="content-card loyalty-insights-card">
-          <h3>Membership upgraders</h3>
+        <section className="content-card page-section">
+          <h2 className="page-section-title">Membership upgraders</h2>
           <p className="loyalty-card-desc">Customers who have purchased 2+ memberships over time.</p>
           {insightsLoading ? (
             <p className="text-muted">Loading...</p>
           ) : membershipUpgraders.length === 0 ? (
             <p className="text-muted">No membership upgraders yet.</p>
           ) : (
-            <div className="loyalty-table-wrap">
-              <table className="loyalty-table">
+            <div className="data-table-wrap">
+              <table className="data-table">
                 <thead>
                   <tr>
                     <th>Customer</th>
                     <th>Phone</th>
-                    <th>Memberships</th>
+                    <th className="num">Memberships</th>
                     <th>Last purchase</th>
                   </tr>
                 </thead>
@@ -182,7 +182,7 @@ export default function LoyaltyPage() {
                     <tr key={row.customerId}>
                       <td><strong>{row.customerName}</strong></td>
                       <td>{row.phone}</td>
-                      <td>{row.membershipCount}</td>
+                      <td className="num">{row.membershipCount}</td>
                       <td>{formatDate(row.lastPurchaseAt)}</td>
                     </tr>
                   ))}
@@ -193,8 +193,8 @@ export default function LoyaltyPage() {
         </section>
       </div>
 
-      <section className="content-card loyalty-search-card">
-        <h3>Manage points</h3>
+      <section className="content-card page-section loyalty-search-card">
+        <h2 className="page-section-title">Manage points</h2>
         <p>Search by phone, name, or membership card. Earn or redeem points.</p>
         <label className="loyalty-search-label">
           <span>Search customer</span>
@@ -224,8 +224,8 @@ export default function LoyaltyPage() {
       </section>
 
       {selectedCustomerId && (
-        <section className="content-card loyalty-detail-card">
-          <h3>{selectedCustomerName} — Loyalty</h3>
+        <section className="content-card page-section loyalty-detail-card">
+          <h2 className="page-section-title">{selectedCustomerName} — Loyalty</h2>
           {loadingLoyalty ? (
             <p className="text-muted">Loading...</p>
           ) : (
@@ -250,13 +250,28 @@ export default function LoyaltyPage() {
               {transactions.length === 0 ? (
                 <p className="text-muted">No transactions yet.</p>
               ) : (
-                <ul className="report-list">
-                  {transactions.slice(0, 20).map((t) => (
-                    <li key={t.id}>
-                      {new Date(t.createdAt).toLocaleString()} — {t.type === 'earn' ? '+' : ''}{t.points} {t.reason && `(${t.reason})`}
-                    </li>
-                  ))}
-                </ul>
+                <div className="data-table-wrap">
+                  <table className="data-table">
+                    <thead>
+                      <tr>
+                        <th>Date & time</th>
+                        <th>Type</th>
+                        <th className="num">Points</th>
+                        <th>Reason</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {transactions.slice(0, 20).map((t) => (
+                        <tr key={t.id}>
+                          <td>{new Date(t.createdAt).toLocaleString()}</td>
+                          <td>{t.type}</td>
+                          <td className="num">{t.type === 'earn' ? '+' : ''}{t.points}</td>
+                          <td>{t.reason || '—'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </>
           )}

@@ -40,6 +40,16 @@ export async function getMe(): Promise<{ success: boolean; user?: User; message?
   return { success: false, message: r.message };
 }
 
+/** Vendors can assign themselves to a branch. */
+export async function updateMyBranch(branchId: string | null): Promise<{ success: boolean; user?: User; message?: string }> {
+  const r = await http<{ user: User }>('/auth/me', {
+    method: 'PATCH',
+    body: JSON.stringify({ branchId }),
+  });
+  if (r.success && 'user' in r) return { success: true, user: r.user as User };
+  return { success: false, message: r.message };
+}
+
 export async function updateProfile(data: {
   name?: string;
   email?: string;

@@ -1,6 +1,8 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useAuthStore } from '../../../auth/auth.store';
 import * as authApi from '../../../api/auth.api';
+import { getBranches } from '../../../api/branches';
+import type { Branch } from '../../../types/crm';
 
 export default function VendorProfilePage() {
   const { user, refreshUser } = useAuthStore();
@@ -12,12 +14,43 @@ export default function VendorProfilePage() {
   const [profileSuccess, setProfileSuccess] = useState('');
   const [profileLoading, setProfileLoading] = useState(false);
 
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [branchSelect, setBranchSelect] = useState(user?.branchId ?? '');
+  const [branchSaving, setBranchSaving] = useState(false);
+  const [branchError, setBranchError] = useState('');
+
   const [currentPassword, setCurrentPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [passwordError, setPasswordError] = useState('');
   const [passwordSuccess, setPasswordSuccess] = useState('');
   const [passwordLoading, setPasswordLoading] = useState(false);
+
+  useEffect(() => {
+    setBranchSelect(user?.branchId ?? '');
+  }, [user?.branchId]);
+
+  useEffect(() => {
+    if (user?.role === 'vendor') {
+      getBranches({ all: true }).then((r) => {
+        if (r.success && r.branches) setBranches(r.branches);
+      });
+    }
+  }, [user?.role]);
+
+  const handleBranchChange = async (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value || null;
+    setBranchSelect(value ?? '');
+    setBranchError('');
+    setBranchSaving(true);
+    const res = await authApi.updateMyBranch(value || null);
+    setBranchSaving(false);
+    if (res.success && res.user) {
+      await refreshUser();
+    } else {
+      setBranchError(res.message || 'Failed to assign branch');
+    }
+  };
 
   const startEdit = () => {
     setName(user?.name ?? '');
@@ -194,6 +227,36 @@ export default function VendorProfilePage() {
             </form>
           )}
         </section>
+
+        {user?.role === 'vendor' && (
+          <section className="content-card vendor-profile-card">
+            <h2 className="vendor-profile-card-title">My branch</h2>
+            <p className="vendor-profile-card-desc">
+              Assign yourself to a branch. You will only see data for this branch. Admin can also assign you from Staff.
+            </p>
+            {branchError && (
+              <div className="vendor-profile-alert vendor-profile-alert-error" role="alert">
+                {branchError}
+              </div>
+            )}
+            <div className="vendor-profile-field">
+              <span className="vendor-profile-field-label">Branch</span>
+              <select
+                value={branchSelect}
+                onChange={handleBranchChange}
+                disabled={branchSaving}
+                className="vendor-profile-input vendor-branch-select"
+                aria-label="Assign yourself to a branch"
+              >
+                <option value="">No branch selected</option>
+                {branches.map((b) => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
+              </select>
+              {branchSaving && <span className="vendor-profile-saving"> Saving…</span>}
+            </div>
+          </section>
+        )}
 
         <section className="content-card vendor-profile-card">
           <h2 className="vendor-profile-card-title">Security</h2>
