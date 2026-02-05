@@ -52,6 +52,7 @@ export function AppRoutes() {
         {/* Auth routes: only for guests */}
         <Route element={<GuestOnly />}>
           <Route element={<AuthLayout />}>
+            <Route path="/" element={<LoginPage />} />
             <Route path={ROUTES.login} element={<LoginPage />} />
             <Route path={ROUTES.forgotPassword} element={<ForgotPasswordPage />} />
           </Route>
@@ -110,8 +111,7 @@ export function AppRoutes() {
           </Route>
         </Route>
 
-        <Route path="/" element={<Navigate to={ROUTES.login} replace />} />
-        <Route path="*" element={<Navigate to={ROUTES.login} replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>
   );

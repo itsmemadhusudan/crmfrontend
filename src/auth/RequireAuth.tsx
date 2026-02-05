@@ -22,7 +22,7 @@ export function RequireAuth({ children, allowedRoles }: RequireAuthProps) {
   }
 
   if (!isAuthenticated || !user) {
-    return <Navigate to={ROUTES.login} state={{ from: location }} replace />;
+    return <Navigate to="/" state={{ from: location }} replace />;
   }
 
   if (allowedRoles?.length && !allowedRoles.includes(user.role)) {
