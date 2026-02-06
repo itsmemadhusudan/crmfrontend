@@ -10,13 +10,13 @@ export default function BranchesPage() {
   const [error, setError] = useState('');
   const [showForm, setShowForm] = useState(false);
   const [name, setName] = useState('');
-  const [code, setCode] = useState('');
   const [address, setAddress] = useState('');
+  const [zipCode, setZipCode] = useState('');
   const [viewingBranch, setViewingBranch] = useState<Branch | null>(null);
   const [editingBranch, setEditingBranch] = useState<Branch | null>(null);
   const [editName, setEditName] = useState('');
-  const [editCode, setEditCode] = useState('');
   const [editAddress, setEditAddress] = useState('');
+  const [editZipCode, setEditZipCode] = useState('');
   const [deletingBranchId, setDeletingBranchId] = useState<string | null>(null);
   const isAdmin = user?.role === 'admin';
 
@@ -35,11 +35,15 @@ export default function BranchesPage() {
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    const res = await createBranch({ name, code: code || undefined, address: address || undefined });
+    const res = await createBranch({
+      name,
+      address: address || undefined,
+      zipCode: zipCode || undefined,
+    });
     if (res.success) {
       setName('');
-      setCode('');
       setAddress('');
+      setZipCode('');
       setShowForm(false);
       loadBranches();
     } else setError((res as { message?: string }).message || 'Failed to create');
@@ -48,8 +52,8 @@ export default function BranchesPage() {
   function openEdit(b: Branch) {
     setEditingBranch(b);
     setEditName(b.name);
-    setEditCode(b.code || '');
     setEditAddress(b.address || '');
+    setEditZipCode(b.zipCode || '');
     setError('');
   }
 
@@ -59,8 +63,8 @@ export default function BranchesPage() {
     setError('');
     const res = await updateBranch(editingBranch.id, {
       name: editName,
-      code: editCode || undefined,
       address: editAddress || undefined,
+      zipCode: editZipCode || undefined,
     });
     if (res.success) {
       setEditingBranch(null);
@@ -98,10 +102,10 @@ export default function BranchesPage() {
           </button>
         )}
         {showForm && (
-          <form onSubmit={handleCreate} className="auth-form" style={{ marginBottom: '1rem', maxWidth: '400px' }}>
-            <label><span>Name</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Tacoma" required /></label>
-            <label><span>Code (optional)</span><input value={code} onChange={(e) => setCode(e.target.value)} placeholder="e.g. TAC" /></label>
-            <label><span>Address (optional)</span><input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Address" /></label>
+          <form onSubmit={handleCreate} className="auth-form" style={{ marginBottom: '1rem', maxWidth: '420px' }}>
+            <label><span>Branch name</span><input value={name} onChange={(e) => setName(e.target.value)} placeholder="e.g. Tacoma" required /></label>
+            <label><span>Branch address</span><input value={address} onChange={(e) => setAddress(e.target.value)} placeholder="Street, city" /></label>
+            <label><span>Zip code</span><input value={zipCode} onChange={(e) => setZipCode(e.target.value)} placeholder="e.g. 98401" /></label>
             <button type="submit" className="auth-submit">Create branch</button>
           </form>
         )}
@@ -112,8 +116,8 @@ export default function BranchesPage() {
               <thead>
                 <tr>
                   <th>Name</th>
-                  {isAdmin && <th>Code</th>}
                   <th>Address</th>
+                  <th>Zip code</th>
                   {isAdmin && <th className="th-actions">Actions</th>}
                 </tr>
               </thead>
@@ -121,8 +125,8 @@ export default function BranchesPage() {
                 {branches.map((b) => (
                   <tr key={b.id}>
                     <td><strong>{b.name}</strong></td>
-                    {isAdmin && <td>{b.code || '—'}</td>}
                     <td>{b.address || '—'}</td>
+                    <td>{b.zipCode || '—'}</td>
                     {isAdmin && (
                       <td className="branch-actions">
                         <button type="button" className="branch-action-btn branch-action-view" onClick={() => setViewingBranch(b)} title="View">View</button>
@@ -152,10 +156,10 @@ export default function BranchesPage() {
             <dl className="branch-view-dl">
               <dt>Name</dt>
               <dd>{viewingBranch.name}</dd>
-              <dt>Code</dt>
-              <dd>{viewingBranch.code || '—'}</dd>
               <dt>Address</dt>
               <dd>{viewingBranch.address || '—'}</dd>
+              <dt>Zip code</dt>
+              <dd>{viewingBranch.zipCode || '—'}</dd>
             </dl>
             <div className="branch-modal-footer">
               <button type="button" className="auth-submit" style={{ width: 'auto' }} onClick={() => setViewingBranch(null)}>Close</button>
@@ -172,9 +176,9 @@ export default function BranchesPage() {
               <button type="button" className="branch-modal-close" onClick={() => setEditingBranch(null)} aria-label="Close">×</button>
             </div>
             <form onSubmit={handleUpdate} className="auth-form">
-              <label><span>Name</span><input value={editName} onChange={(e) => setEditName(e.target.value)} required /></label>
-              <label><span>Code (optional)</span><input value={editCode} onChange={(e) => setEditCode(e.target.value)} /></label>
-              <label><span>Address (optional)</span><input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} /></label>
+              <label><span>Branch name</span><input value={editName} onChange={(e) => setEditName(e.target.value)} required /></label>
+              <label><span>Address</span><input value={editAddress} onChange={(e) => setEditAddress(e.target.value)} /></label>
+              <label><span>Zip code</span><input value={editZipCode} onChange={(e) => setEditZipCode(e.target.value)} /></label>
               <div className="branch-modal-footer">
                 <button type="button" className="branch-action-btn branch-action-cancel" onClick={() => setEditingBranch(null)}>Cancel</button>
                 <button type="submit" className="auth-submit" style={{ width: 'auto' }}>Save</button>

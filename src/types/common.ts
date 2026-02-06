@@ -3,6 +3,7 @@ export interface Branch {
   name: string;
   code?: string;
   address?: string;
+  zipCode?: string;
 }
 
 export interface Customer {
@@ -14,6 +15,7 @@ export interface Customer {
   primaryBranch?: string;
   customerPackage?: string;
   customerPackagePrice?: number;
+  customerPackageExpiry?: string;
   notes?: string;
   createdAt?: string;
 }
@@ -39,6 +41,7 @@ export interface Membership {
   purchaseDate: string;
   expiryDate?: string;
   status: string;
+  packagePrice?: number;
 }
 
 export interface MembershipUsage {
@@ -77,11 +80,24 @@ export interface Appointment {
   notes?: string;
 }
 
+export interface SalesBreakdownRow {
+  customerName: string;
+  packageName: string;
+  price: number;
+}
+
 export interface SalesDashboard {
   from: string;
   to: string;
   totalRevenue: number;
-  byBranch: { branch: string; revenue: number }[];
+  totalSales?: number;
+  revenuePercentage?: number;
+  activeMembershipCount?: number;
+  breakdown?: SalesBreakdownRow[];
+  breakdownTotal?: number;
+  breakdownPage?: number;
+  breakdownLimit?: number;
+  byBranch: { branch: string; sales?: number; revenue: number; membershipCount?: number }[];
   byService: { serviceCategory: string; revenue: number }[];
   totalMemberships: number;
   branches: { id: string; name: string }[];

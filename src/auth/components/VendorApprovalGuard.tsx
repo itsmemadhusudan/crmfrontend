@@ -8,6 +8,5 @@ export function VendorApprovalGuard() {
   if (user?.role === 'vendor' && user?.approvalStatus !== 'approved') {
     return <VendorPendingPage />;
   }
-
   return <Outlet />;
 }

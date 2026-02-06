@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getMembership, recordMembershipUsage } from '../../../api/memberships';
 import { useAuth } from '../../../auth/hooks/useAuth';
+import { formatCurrency } from '../../../utils/money';
 import type { Membership, MembershipUsage } from '../../../types/common';
 
 export default function MembershipDetailPage() {
@@ -82,14 +83,14 @@ export default function MembershipDetailPage() {
         <dl className="vendor-detail-dl">
           <dt>Customer</dt>
           <dd>{membership!.customer?.name || '—'} {membership!.customer?.phone && `(${membership!.customer.phone})`}</dd>
-          <dt>Type</dt>
-          <dd>{membership!.typeName || '—'}</dd>
           <dt>Total credits</dt>
           <dd>{membership!.totalCredits}</dd>
           <dt>Used</dt>
           <dd>{membership!.usedCredits}</dd>
           <dt>Remaining</dt>
           <dd>{remaining}</dd>
+          <dt>Package price</dt>
+          <dd>{membership!.packagePrice != null ? formatCurrency(membership!.packagePrice) : '—'}</dd>
           <dt>Sold at branch</dt>
           <dd>{membership!.soldAtBranch || '—'}</dd>
           <dt>Purchase date</dt>

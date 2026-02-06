@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { getLeadStatuses, createLeadStatus, updateLeadStatus, deleteLeadStatus } from '../api/leadStatuses';
+import { getLeadStatuses, createLeadStatus, deleteLeadStatus } from '../api/leadStatuses';
 import type { LeadStatusItem } from '../api/leadStatuses';
 
 export default function AdminSettings() {

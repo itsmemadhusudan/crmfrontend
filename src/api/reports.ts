@@ -1,12 +1,21 @@
 import { apiRequest } from './client';
 import type { SalesDashboard, Settlement, OwnerOverviewBranch } from '../types/crm';
 
-export async function getSalesDashboard(params?: { branchId?: string; from?: string; to?: string; serviceCategory?: string }): Promise<{ success: boolean; data?: SalesDashboard; message?: string }> {
+export async function getSalesDashboard(params?: {
+  branchId?: string;
+  from?: string;
+  to?: string;
+  serviceCategory?: string;
+  breakdownPage?: number;
+  breakdownLimit?: number;
+}): Promise<{ success: boolean; data?: SalesDashboard; message?: string }> {
   const q = new URLSearchParams();
   if (params?.branchId) q.set('branchId', params.branchId);
   if (params?.from) q.set('from', params.from);
   if (params?.to) q.set('to', params.to);
   if (params?.serviceCategory) q.set('serviceCategory', params.serviceCategory);
+  if (params?.breakdownPage != null) q.set('breakdownPage', String(params.breakdownPage));
+  if (params?.breakdownLimit != null) q.set('breakdownLimit', String(params.breakdownLimit));
   const query = q.toString();
   const r = await apiRequest<SalesDashboard>(`/reports/sales-dashboard${query ? `?${query}` : ''}`);
   if (r.success && 'totalRevenue' in r) return { success: true, data: r as unknown as SalesDashboard };

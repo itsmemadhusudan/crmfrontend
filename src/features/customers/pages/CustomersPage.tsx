@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { getCustomers, createCustomer } from '../../../api/customers';
 import { getBranches } from '../../../api/branches';
 import { useAuth } from '../../../auth/hooks/useAuth';
@@ -7,6 +8,7 @@ import type { Customer, Branch } from '../../../types/common';
 
 export default function CustomersPage() {
   const { user } = useAuth();
+  const navigate = useNavigate();
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
   const [loading, setLoading] = useState(true);
@@ -15,11 +17,31 @@ export default function CustomersPage() {
   const [name, setName] = useState('');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
-  const [membershipCardId, setMembershipCardId] = useState('');
   const [primaryBranchId, setPrimaryBranchId] = useState('');
-  const [customerPackage, setCustomerPackage] = useState('');
-  const [customerPackagePrice, setCustomerPackagePrice] = useState('');
+  const [notes, setNotes] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
+  const [branchFilterId, setBranchFilterId] = useState('');
   const isAdmin = user?.role === 'admin';
+  const basePath = isAdmin ? '/admin' : '/vendor';
+
+  const isPackageExpired = (expiry: string | undefined) => expiry && new Date(expiry) < new Date(new Date().setHours(0, 0, 0, 0));
+  const expiredCount = customers.filter((c) => c.customerPackage && isPackageExpired(c.customerPackageExpiry)).length;
+
+  const selectedBranchName = branchFilterId ? branches.find((b) => b.id === branchFilterId)?.name : null;
+  const byBranch = branchFilterId
+    ? customers.filter((c) => c.primaryBranch === selectedBranchName)
+    : customers;
+
+  const searchLower = searchQuery.trim().toLowerCase();
+  const filteredCustomers = searchLower
+    ? byBranch.filter((c) => {
+        const card = (c.membershipCardId || '').toLowerCase();
+        const n = (c.name || '').toLowerCase();
+        const p = (c.phone || '').toLowerCase();
+        const e = (c.email || '').toLowerCase();
+        return card.includes(searchLower) || n.includes(searchLower) || p.includes(searchLower) || e.includes(searchLower);
+      })
+    : byBranch;
 
   useEffect(() => {
     getCustomers().then((r) => {
@@ -40,18 +62,15 @@ export default function CustomersPage() {
       name,
       phone,
       email: email || undefined,
-      membershipCardId: membershipCardId || undefined,
       primaryBranchId: primaryBranchId || (user?.branchId || undefined),
-      customerPackage: customerPackage.trim() || undefined,
-      customerPackagePrice: customerPackagePrice !== '' ? Number(customerPackagePrice) : undefined,
+      notes: notes || undefined,
     });
     if (res.success) {
       setName('');
       setPhone('');
       setEmail('');
-      setMembershipCardId('');
-      setCustomerPackage('');
-      setCustomerPackagePrice('');
+      setPrimaryBranchId('');
+      setNotes('');
       setShowForm(false);
       getCustomers().then((r) => r.success && r.customers && setCustomers(r.customers));
     } else setError((res as { message?: string }).message || 'Failed to create');
@@ -69,7 +88,7 @@ export default function CustomersPage() {
     <div className="dashboard-content">
       <header className="page-hero">
         <h1 className="page-hero-title">Customers</h1>
-        <p className="page-hero-subtitle">Customer list and profiles. Add customers and link to memberships.</p>
+        <p className="page-hero-subtitle">Customer list. Add customers here; assign package and membership from the Memberships page.</p>
       </header>
       <section className="content-card">
         <button type="button" className="auth-submit" style={{ marginBottom: '1rem', width: 'auto' }} onClick={() => setShowForm(!showForm)}>
@@ -80,15 +99,8 @@ export default function CustomersPage() {
             <label><span>Name</span><input value={name} onChange={(e) => setName(e.target.value)} required /></label>
             <label><span>Phone</span><input type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} required /></label>
             <label><span>Email (optional)</span><input type="email" value={email} onChange={(e) => setEmail(e.target.value)} /></label>
-            <label><span>Membership card ID (optional)</span><input value={membershipCardId} onChange={(e) => setMembershipCardId(e.target.value)} /></label>
-            <label><span>Customer package (optional)</span><input value={customerPackage} onChange={(e) => setCustomerPackage(e.target.value)} placeholder="What type of package" /></label>
-            <label>
-              <span>Customer package price (optional)</span>
-              <span className="input-prefix-dollar">
-                <span className="input-prefix-symbol" aria-hidden>$</span>
-                <input type="number" min={0} step="0.01" value={customerPackagePrice} onChange={(e) => setCustomerPackagePrice(e.target.value)} placeholder="0.00" />
-              </span>
-            </label>
+            <label><span>Notes (optional)</span><textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2} /></label>
+            <p className="form-hint">Card ID is auto-generated from the branch (e.g. tes-00001) after you create the customer.</p>
             {isAdmin && (
               <label>
                 <span>Primary branch</span>
@@ -101,37 +113,100 @@ export default function CustomersPage() {
             <button type="submit" className="auth-submit">Create customer</button>
           </form>
         )}
+        {isAdmin && expiredCount > 0 && (
+          <div className="package-expired-alert" role="alert">
+            <strong>Package expired:</strong> {expiredCount} customer{expiredCount !== 1 ? 's have' : ' has'} a package that has expired. Please renew from Memberships.
+          </div>
+        )}
         {error && <div className="auth-error vendors-error">{error}</div>}
         {customers.length > 0 ? (
-          <div className="data-table-wrap">
-            <table className="data-table">
-              <thead>
-                <tr>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>Email</th>
-                  <th>Card ID</th>
-                  <th>Package</th>
-                  <th>Package price</th>
-                  <th>Branch</th>
-                </tr>
-              </thead>
-              <tbody>
-                {customers.map((c) => (
-                  <tr key={c.id}>
-                    <td><strong>{c.name}</strong></td>
-                    <td>{c.phone}</td>
-                    <td>{c.email || '—'}</td>
-                    <td>{c.membershipCardId || '—'}</td>
-                    <td>{c.customerPackage || '—'}</td>
-                    <td>{c.customerPackagePrice != null ? formatCurrency(c.customerPackagePrice) : '—'}</td>
-                    <td>{c.primaryBranch || '—'}</td>
+          <>
+            <div className="customers-filters" style={{ display: 'flex', flexWrap: 'wrap', gap: '1rem', alignItems: 'flex-end', marginBottom: '1rem' }}>
+              {isAdmin && (
+                <label style={{ minWidth: '180px' }}>
+                  <span>Branch</span>
+                  <select
+                    value={branchFilterId}
+                    onChange={(e) => setBranchFilterId(e.target.value)}
+                    aria-label="Filter customers by branch"
+                    style={{ width: '100%' }}
+                  >
+                    <option value="">All customers</option>
+                    {branches.map((b) => (
+                      <option key={b.id} value={b.id}>{b.name}</option>
+                    ))}
+                  </select>
+                </label>
+              )}
+              <label className="customers-search-label" style={{ flex: '1', minWidth: '200px' }}>
+                <span>Search by Card ID, name, phone or email</span>
+                <input
+                  type="search"
+                  className="customers-search-input"
+                  placeholder="Search..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  aria-label="Search customers by card ID, name, phone or email"
+                />
+              </label>
+            </div>
+            <div className="data-table-wrap">
+              <table className="data-table">
+                <thead>
+                  <tr>
+                    <th>Card ID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Email</th>
+                    {isAdmin && (
+                      <>
+                        <th>Package</th>
+                        <th>Price</th>
+                        <th>Expiry</th>
+                      </>
+                    )}
+                    <th>Branch</th>
+                    <th>Actions</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : !showForm && <p className="vendors-empty">No customers.</p>}
+                </thead>
+                <tbody>
+                  {filteredCustomers.map((c) => {
+                    const expired = isAdmin && c.customerPackage && isPackageExpired(c.customerPackageExpiry);
+                    return (
+                      <tr key={c.id} className={expired ? 'package-expired-row' : ''}>
+                        <td>{c.membershipCardId || '—'}</td>
+                        <td><strong>{c.name}</strong></td>
+                        <td>{c.phone}</td>
+                        <td>{c.email || '—'}</td>
+                        {isAdmin && (
+                          <>
+                            <td>{c.customerPackage ? (expired ? <span>{c.customerPackage} <span className="status-badge status-expired">Expired</span></span> : c.customerPackage) : '—'}</td>
+                            <td>{c.customerPackagePrice != null ? formatCurrency(c.customerPackagePrice) : '—'}</td>
+                            <td>{c.customerPackageExpiry ? (expired ? <span className="text-expired">{c.customerPackageExpiry}</span> : c.customerPackageExpiry) : '—'}</td>
+                          </>
+                        )}
+                        <td>{c.primaryBranch || '—'}</td>
+                        <td>
+                          <Link to={`${basePath}/customers/${c.id}`} className="filter-btn" style={{ marginRight: '0.5rem' }}>View</Link>
+                          <button type="button" className="filter-btn" onClick={() => navigate(`${basePath}/customers/${c.id}?edit=1`)}>Edit</button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {filteredCustomers.length === 0 && (
+              <p className="vendors-empty">
+                {searchQuery.trim()
+                  ? `No customers match "${searchQuery.trim()}".`
+                  : branchFilterId
+                    ? `No customers in this branch.`
+                    : 'No customers.'}
+              </p>
+            )}
+          </>
+        ) : !showForm && <p className="vendors-empty">No customers. Add a customer, then assign package and membership from the Memberships page.</p>}
       </section>
     </div>
   );

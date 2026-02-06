@@ -1,26 +1,48 @@
 import { useEffect, useState } from 'react';
-import { getMemberships } from '../api/memberships';
+import { getMemberships, createMembership } from '../api/memberships';
+import { getCustomers } from '../api/customers';
 import { getBranches } from '../api/branches';
+import { getPackages } from '../api/packages';
 import { useAuth } from '../auth/hooks/useAuth';
 import { Link, useSearchParams } from 'react-router-dom';
-import type { Membership } from '../types/crm';
-import type { Branch } from '../types/crm';
+import { formatCurrency } from '../utils/money';
+import type { Membership, Branch } from '../types/crm';
+import type { Customer } from '../types/common';
+import type { PackageItem } from '../api/packages';
 
 export default function MembershipsList() {
   const { user } = useAuth();
   const [searchParams] = useSearchParams();
   const [memberships, setMemberships] = useState<Membership[]>([]);
+  const [customers, setCustomers] = useState<Customer[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [packages, setPackages] = useState<PackageItem[]>([]);
   const [branchId, setBranchId] = useState(searchParams.get('branchId') || '');
   const [status, setStatus] = useState(searchParams.get('status') || '');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [showCreateForm, setShowCreateForm] = useState(false);
+  const [createCustomerId, setCreateCustomerId] = useState('');
+  const [createTotalCredits, setCreateTotalCredits] = useState('');
+  const [createSoldAtBranchId, setCreateSoldAtBranchId] = useState('');
+  const [createExpiryDate, setCreateExpiryDate] = useState('');
+  const [createPackageId, setCreatePackageId] = useState('');
+  const [createPackagePrice, setCreatePackagePrice] = useState('');
+  const [createPackageExpiry, setCreatePackageExpiry] = useState('');
+  const [createSubmitting, setCreateSubmitting] = useState(false);
   const basePath = user?.role === 'admin' ? '/admin' : '/vendor';
   const isAdmin = user?.role === 'admin';
 
+  const selectedPackage = packages.find((p) => p.id === createPackageId);
+
   useEffect(() => {
-    if (isAdmin) getBranches().then((r) => r.success && r.branches && setBranches(r.branches));
+    if (isAdmin) getBranches().then((r) => r.success && r.branches && setBranches(r.branches || []));
   }, [isAdmin]);
+
+  useEffect(() => {
+    getCustomers().then((r) => r.success && r.customers && setCustomers(r.customers || []));
+    getPackages(false).then((r) => r.success && r.packages && setPackages(r.packages || []));
+  }, []);
 
   useEffect(() => {
     setLoading(true);
@@ -31,13 +53,119 @@ export default function MembershipsList() {
     });
   }, [branchId, status]);
 
+  useEffect(() => {
+    if (createPackageId && selectedPackage) setCreatePackagePrice(String(selectedPackage.price));
+  }, [createPackageId, selectedPackage?.price]);
+
+  async function handleCreateMembership(e: React.FormEvent) {
+    e.preventDefault();
+    setError('');
+    const credits = Number(createTotalCredits);
+    if (!createCustomerId || isNaN(credits) || credits < 1) {
+      setError('Customer and total credits are required.');
+      return;
+    }
+    setCreateSubmitting(true);
+    const pkgPrice = createPackageId && selectedPackage
+      ? (createPackagePrice !== '' ? Number(createPackagePrice) : selectedPackage.price)
+      : undefined;
+    const res = await createMembership({
+      customerId: createCustomerId,
+      totalCredits: credits,
+      soldAtBranchId: isAdmin ? createSoldAtBranchId || undefined : undefined,
+      expiryDate: createExpiryDate || undefined,
+      customerPackage: selectedPackage?.name,
+      customerPackagePrice: pkgPrice,
+      customerPackageExpiry: createPackageExpiry || undefined,
+    });
+    setCreateSubmitting(false);
+    if (res.success) {
+      setShowCreateForm(false);
+      setCreateCustomerId('');
+      setCreateTotalCredits('');
+      setCreateExpiryDate('');
+      setCreatePackageId('');
+      setCreatePackagePrice('');
+      setCreatePackageExpiry('');
+      getMemberships({ branchId: branchId || undefined, status: status || undefined }).then((r) => r.success && 'memberships' in r && setMemberships((r as { memberships: Membership[] }).memberships));
+    } else setError((res as { message?: string }).message || 'Failed to create membership');
+  }
+
   return (
     <div className="dashboard-content">
       <header className="page-hero">
         <h1 className="page-hero-title">Memberships</h1>
-        <p className="page-hero-subtitle">Membership records and usage history. Track where sold and where used.</p>
+        <p className="page-hero-subtitle">Assign memberships to customers. Set package and expiry here. View list below.</p>
       </header>
       <section className="content-card">
+        <h2 className="page-section-title" style={{ marginTop: 0 }}>Create new membership</h2>
+        <p className="page-hero-subtitle" style={{ marginBottom: '1rem' }}>Select a customer and set credits. Optionally set package and expiry for the customer.</p>
+        <button type="button" className="auth-submit" style={{ marginBottom: '1rem', width: 'auto' }} onClick={() => setShowCreateForm(!showCreateForm)}>
+          {showCreateForm ? 'Cancel' : 'Create new membership'}
+        </button>
+        {showCreateForm && (
+          <form onSubmit={handleCreateMembership} className="auth-form" style={{ marginBottom: '1.5rem', maxWidth: '480px' }}>
+            <label>
+              <span>Customer</span>
+              <select value={createCustomerId} onChange={(e) => setCreateCustomerId(e.target.value)} required>
+                <option value="">— Select customer</option>
+                {customers.map((c) => (
+                  <option key={c.id} value={c.id}>{c.name} — {c.phone}</option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span>Total credits</span>
+              <input type="number" min={1} value={createTotalCredits} onChange={(e) => setCreateTotalCredits(e.target.value)} required />
+            </label>
+            {isAdmin && (
+              <label>
+                <span>Branch (sold at)</span>
+                <select value={createSoldAtBranchId} onChange={(e) => setCreateSoldAtBranchId(e.target.value)}>
+                  <option value="">—</option>
+                  {branches.map((b) => (
+                    <option key={b.id} value={b.id}>{b.name}</option>
+                  ))}
+                </select>
+              </label>
+            )}
+            <label>
+              <span>Membership expiry date (optional)</span>
+              <input type="date" value={createExpiryDate} onChange={(e) => setCreateExpiryDate(e.target.value)} />
+            </label>
+            <hr style={{ margin: '1rem 0', border: 'none', borderTop: '1px solid var(--theme-border)' }} />
+            <p style={{ fontSize: '0.9rem', color: 'var(--theme-text)', marginBottom: '0.75rem' }}>Customer package (optional — shown on customer list)</p>
+            <label>
+              <span>Package</span>
+              <select value={createPackageId} onChange={(e) => setCreatePackageId(e.target.value)}>
+                <option value="">— None</option>
+                {packages.map((p) => (
+                  <option key={p.id} value={p.id}>{p.name} — {formatCurrency(p.price)}</option>
+                ))}
+              </select>
+            </label>
+            {createPackageId && selectedPackage && (
+              <>
+                <label>
+                  <span>Package price</span>
+                  <span className="input-prefix-dollar">
+                    <span className="input-prefix-symbol" aria-hidden>$</span>
+                    <input type="number" min={0} step="0.01" value={createPackagePrice} onChange={(e) => setCreatePackagePrice(e.target.value)} />
+                  </span>
+                </label>
+                <label>
+                  <span>Package expiry date</span>
+                  <input type="date" value={createPackageExpiry} onChange={(e) => setCreatePackageExpiry(e.target.value)} />
+                </label>
+              </>
+            )}
+            <button type="submit" className="auth-submit" disabled={createSubmitting}>{createSubmitting ? 'Creating…' : 'Create membership'}</button>
+          </form>
+        )}
+        {error && <div className="auth-error vendors-error">{error}</div>}
+      </section>
+      <section className="content-card">
+        <h2 className="page-section-title">Membership list</h2>
         <div className="vendors-filters" style={{ marginBottom: '1rem' }}>
           {isAdmin && (
             <select value={branchId} onChange={(e) => setBranchId(e.target.value)} className="filter-btn">
@@ -52,7 +180,6 @@ export default function MembershipsList() {
             <option value="expired">Expired</option>
           </select>
         </div>
-        {error && <div className="auth-error vendors-error">{error}</div>}
         {loading ? (
           <div className="vendors-loading"><div className="spinner" /><span>Loading...</span></div>
         ) : memberships.length === 0 ? (
@@ -63,10 +190,11 @@ export default function MembershipsList() {
               <thead>
                 <tr>
                   <th>Customer</th>
-                  <th>Type</th>
                   <th className="num">Total / Used / Remaining</th>
+                  <th>Package price</th>
                   <th>Sold at</th>
                   <th>Purchase date</th>
+                  <th>Expiry</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
@@ -75,10 +203,11 @@ export default function MembershipsList() {
                 {memberships.map((m) => (
                   <tr key={m.id}>
                     <td><strong>{m.customer?.name || '—'}</strong> {m.customer?.phone && `(${m.customer.phone})`}</td>
-                    <td>{m.typeName || '—'}</td>
                     <td className="num">{m.totalCredits} / {m.usedCredits} / {(m.remainingCredits ?? m.totalCredits - m.usedCredits)}</td>
+                    <td className="num">{m.packagePrice != null ? formatCurrency(m.packagePrice) : '—'}</td>
                     <td>{m.soldAtBranch || '—'}</td>
                     <td>{m.purchaseDate ? new Date(m.purchaseDate).toLocaleDateString() : '—'}</td>
+                    <td>{m.expiryDate ? new Date(m.expiryDate).toLocaleDateString() : '—'}</td>
                     <td><span className={`status-badge status-${m.status === 'active' ? 'approved' : m.status === 'used' ? 'rejected' : 'pending'}`}>{m.status}</span></td>
                     <td><Link to={`${basePath}/memberships/${m.id}`}>View / Use</Link></td>
                   </tr>

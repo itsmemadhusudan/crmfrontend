@@ -26,7 +26,16 @@ export async function getMembership(id: string): Promise<{ success: boolean; mem
   return { success: false, message: (r as { message?: string }).message };
 }
 
-export async function createMembership(data: { customerId: string; membershipTypeId: string; totalCredits: number; soldAtBranchId?: string }) {
+export async function createMembership(data: {
+  customerId: string;
+  membershipTypeId?: string;
+  totalCredits: number;
+  soldAtBranchId?: string;
+  expiryDate?: string;
+  customerPackage?: string;
+  customerPackagePrice?: number;
+  customerPackageExpiry?: string;
+}) {
   return apiRequest<{ membership: Membership }>('/memberships', { method: 'POST', body: JSON.stringify(data) });
 }
 

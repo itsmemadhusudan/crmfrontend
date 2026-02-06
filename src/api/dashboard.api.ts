@@ -3,6 +3,11 @@ import { apiRequest } from './client';
 export interface BranchDashboardData {
   from: string;
   to: string;
+  totalSales?: number;
+  activeMembershipCount?: number;
+  expiredMembershipCount?: number;
+  usedMembershipCount?: number;
+  customersCount?: number;
   membershipSalesCount: number;
   membershipSalesRevenue: number;
   todayAppointments: { id: string; customer?: { name: string; phone: string }; staff?: string; service?: string; scheduledAt: string; status: string }[];

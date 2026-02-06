@@ -18,7 +18,7 @@ export function DashboardLayout({ title, navItems }: DashboardLayoutProps) {
   }
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard ${sidebarOpen ? 'dashboard-sidebar-open' : ''}`}>
       <header className="dashboard-header">
         <button
           type="button"

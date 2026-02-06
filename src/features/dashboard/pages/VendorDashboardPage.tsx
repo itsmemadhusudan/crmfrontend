@@ -8,18 +8,20 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  Legend,
 } from 'recharts';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import { getBranchDashboard } from '../../../api/dashboard.api';
-import { getSalesDashboard } from '../../../api/reports';
-import { getBranches } from '../../../api/branches';
 import { getCustomers } from '../../../api/customers';
 import { ROUTES } from '../../../config/constants';
 import { formatCurrency } from '../../../utils/money';
 import type { BranchDashboardData } from '../../../api/dashboard.api';
-import type { SalesDashboard } from '../../../types/crm';
-import type { Branch } from '../../../types/crm';
 import type { Customer } from '../../../types/crm';
+
+const MEMBERSHIP_STATUS_COLORS = { Active: '#22c55e', Expired: '#f59e0b', Used: '#6366f1' };
 
 type DatePreset = '7d' | '30d';
 
@@ -38,13 +40,9 @@ export default function VendorDashboardPage() {
   const [to, setTo] = useState(() => getDateRange('30d').to);
 
   const [data, setData] = useState<BranchDashboardData | null>(null);
-  const [salesData, setSalesData] = useState<SalesDashboard | null>(null);
-  const [branches, setBranches] = useState<Branch[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
 
   const [loading, setLoading] = useState(true);
-  const [salesLoading, setSalesLoading] = useState(true);
-  const [branchesLoading, setBranchesLoading] = useState(true);
   const [customersLoading, setCustomersLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -58,33 +56,14 @@ export default function VendorDashboardPage() {
     }).catch(() => setLoading(false));
   }, [from, to]);
 
-  const loadSales = useCallback(() => {
-    setSalesLoading(true);
-    getSalesDashboard({ from: new Date(from).toISOString(), to: new Date(to).toISOString() }).then((r) => {
-      setSalesLoading(false);
-      if (r.success && r.data) setSalesData(r.data);
-    }).catch(() => setSalesLoading(false));
-  }, [from, to]);
-
   useEffect(() => { loadDashboard(); }, [loadDashboard]);
-  useEffect(() => { loadSales(); }, [loadSales]);
   useEffect(() => {
-    setBranchesLoading(true);
     setCustomersLoading(true);
-    getBranches().then((r) => {
-      setBranchesLoading(false);
-      if (r.success && r.branches) setBranches(r.branches);
-    }).catch(() => setBranchesLoading(false));
     getCustomers().then((r) => {
       setCustomersLoading(false);
       if (r.success && r.customers) setCustomers(r.customers);
     }).catch(() => setCustomersLoading(false));
   }, []);
-
-  const chartServiceData = (salesData?.byService ?? []).map((x) => ({
-    name: x.serviceCategory || 'Other',
-    revenue: x.revenue,
-  }));
 
   if (loading && !data) {
     return (
@@ -141,7 +120,7 @@ export default function VendorDashboardPage() {
               30 days
             </button>
           </div>
-          <button type="button" className="vendor-dashboard-refresh" onClick={() => { loadDashboard(); loadSales(); }} aria-label="Refresh">
+          <button type="button" className="vendor-dashboard-refresh" onClick={() => loadDashboard()} aria-label="Refresh">
             ↻ Refresh
           </button>
         </div>
@@ -149,24 +128,18 @@ export default function VendorDashboardPage() {
 
       <section className="vendor-dashboard-kpis">
         <div className="vendor-kpi-card">
-          <span className="vendor-kpi-value">{salesLoading ? '…' : formatCurrency(salesData?.totalRevenue ?? 0)}</span>
-          <span className="vendor-kpi-label">Revenue (period)</span>
-          <Link to={ROUTES.vendor.sales} className="vendor-kpi-link">View sales →</Link>
+          <span className="vendor-kpi-value">{formatCurrency(data?.totalSales ?? 0)}</span>
+          <span className="vendor-kpi-label">Total sales</span>
         </div>
         <div className="vendor-kpi-card">
-          <span className="vendor-kpi-value">{data?.membershipSalesCount ?? 0}</span>
-          <span className="vendor-kpi-label">Memberships sold</span>
+          <span className="vendor-kpi-value">{data?.activeMembershipCount ?? 0}</span>
+          <span className="vendor-kpi-label">Total membership</span>
           <Link to={ROUTES.vendor.memberships} className="vendor-kpi-link">View →</Link>
         </div>
         <div className="vendor-kpi-card">
           <span className="vendor-kpi-value">{data?.todayAppointments?.length ?? 0}</span>
           <span className="vendor-kpi-label">Today&apos;s appointments</span>
           <Link to={ROUTES.vendor.appointments} className="vendor-kpi-link">View →</Link>
-        </div>
-        <div className="vendor-kpi-card vendor-kpi-warning">
-          <span className="vendor-kpi-value">{data?.leadsToFollowUp?.length ?? 0}</span>
-          <span className="vendor-kpi-label">Leads to follow up</span>
-          <Link to={ROUTES.vendor.leads} className="vendor-kpi-link">View →</Link>
         </div>
         <div className="vendor-kpi-card">
           <span className="vendor-kpi-value">{data?.servicesCompleted ?? 0}</span>
@@ -179,107 +152,79 @@ export default function VendorDashboardPage() {
         </div>
       </section>
 
-      <section className="content-card vendor-dashboard-chart-card">
-        <h3>Revenue by service category</h3>
-        {salesLoading ? (
-          <div className="vendor-chart-loading"><div className="spinner" /><span>Loading...</span></div>
-        ) : chartServiceData.length > 0 ? (
-          <div className="vendor-chart-wrap">
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart data={chartServiceData} margin={{ top: 12, right: 12, left: 12, bottom: 50 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-border)" />
-                <XAxis dataKey="name" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} angle={-25} textAnchor="end" height={50} />
-                <YAxis tick={{ fill: 'var(--theme-text)', fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                <Tooltip
-                  contentStyle={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)', borderRadius: 8 }}
-                  formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                  labelFormatter={(label) => `Category: ${label}`}
-                />
-                <Bar dataKey="revenue" fill="var(--theme-link)" radius={[4, 4, 0, 0]} name="Revenue" />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <p className="vendor-chart-empty">No revenue data for this period.</p>
-        )}
+      <h3 className="vendor-dashboard-section-title">Branch overview</h3>
+      <div className="vendor-dashboard-charts-top">
+        <section className="content-card vendor-chart-card">
+          <h4>Membership status</h4>
+          {(() => {
+            const membershipPieData = [
+              { name: 'Active', value: data?.activeMembershipCount ?? 0, color: MEMBERSHIP_STATUS_COLORS.Active },
+              { name: 'Expired', value: data?.expiredMembershipCount ?? 0, color: MEMBERSHIP_STATUS_COLORS.Expired },
+              { name: 'Used', value: data?.usedMembershipCount ?? 0, color: MEMBERSHIP_STATUS_COLORS.Used },
+            ].filter((d) => d.value > 0);
+            if (membershipPieData.length === 0) return <p className="vendor-chart-empty">No membership data yet.</p>;
+            return (
+              <ResponsiveContainer width="100%" height={240}>
+                <PieChart>
+                  <Pie
+                    data={membershipPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={50}
+                    outerRadius={80}
+                    paddingAngle={2}
+                    dataKey="value"
+                    nameKey="name"
+                    label={({ name, value }) => `${name}: ${value}`}
+                  >
+                    {membershipPieData.map((entry, i) => (
+                      <Cell key={i} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <Tooltip
+                    contentStyle={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)', borderRadius: 8 }}
+                    formatter={(value: number, name: string) => [value, name]}
+                  />
+                  <Legend />
+                </PieChart>
+              </ResponsiveContainer>
+            );
+          })()}
+        </section>
+        <section className="content-card vendor-chart-card vendor-chart-sales">
+          <h4>Total sales (this branch)</h4>
+          <div className="vendor-chart-sales-value">{formatCurrency(data?.totalSales ?? 0)}</div>
+          <p className="text-muted">Sum of all membership package prices</p>
+        </section>
+      </div>
+      <section className="content-card vendor-chart-card vendor-chart-counts-full">
+        <h4>Counts (this branch)</h4>
+        <ResponsiveContainer width="100%" height={240}>
+          <BarChart
+            data={[
+              { name: 'Customers', count: data?.customersCount ?? (customersLoading ? 0 : customers.length), fill: '#3b82f6' },
+              { name: 'Active membership', count: data?.activeMembershipCount ?? 0, fill: '#22c55e' },
+              { name: 'Expired membership', count: data?.expiredMembershipCount ?? 0, fill: '#f59e0b' },
+              { name: 'Used membership', count: data?.usedMembershipCount ?? 0, fill: '#6366f1' },
+            ]}
+            layout="vertical"
+            margin={{ top: 8, right: 24, left: 80, bottom: 8 }}
+          >
+            <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-border)" />
+            <XAxis type="number" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} />
+            <YAxis type="category" dataKey="name" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} width={75} />
+            <Tooltip
+              contentStyle={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)', borderRadius: 8 }}
+              formatter={(value: number) => [value, 'Count']}
+            />
+            <Bar dataKey="count" radius={[0, 4, 4, 0]}>
+              {[0, 1, 2, 3].map((i) => (
+                <Cell key={i} fill={['#3b82f6', '#22c55e', '#f59e0b', '#6366f1'][i]} />
+              ))}
+            </Bar>
+          </BarChart>
+        </ResponsiveContainer>
       </section>
-
-      <h3 className="vendor-dashboard-section-title">Recent activity</h3>
-      <div className="vendor-dashboard-activity-grid">
-        <section className="content-card vendor-activity-card">
-          <div className="vendor-activity-card-head">
-            <h4>Today&apos;s appointments</h4>
-            <Link to={ROUTES.vendor.appointments} className="vendor-activity-link">View all →</Link>
-          </div>
-          {!data?.todayAppointments || data.todayAppointments.length === 0 ? (
-            <p className="text-muted">No appointments today.</p>
-          ) : (
-            <ul className="vendor-activity-list">
-              {data.todayAppointments.slice(0, 8).map((a) => (
-                <li key={a.id}>
-                  <span className="vendor-activity-time">{new Date(a.scheduledAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                  <span className="vendor-activity-detail">{a.customer?.name ?? '—'} · {a.service ?? a.status}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-
-        <section className="content-card vendor-activity-card">
-          <div className="vendor-activity-card-head">
-            <h4>Leads to follow up</h4>
-            <Link to={ROUTES.vendor.leads} className="vendor-activity-link">View all →</Link>
-          </div>
-          {!data?.leadsToFollowUp || data.leadsToFollowUp.length === 0 ? (
-            <p className="text-muted">No leads to follow up.</p>
-          ) : (
-            <ul className="vendor-activity-list">
-              {data.leadsToFollowUp.slice(0, 8).map((l) => (
-                <li key={l.id}>
-                  <Link to={ROUTES.vendor.leadDetail(l.id)} className="vendor-activity-lead">{l.name}</Link>
-                  <span className="vendor-activity-status">{l.status}</span>
-                </li>
-              ))}
-            </ul>
-          )}
-        </section>
-      </div>
-
-      <div className="vendor-dashboard-info-row">
-        <section className="content-card vendor-info-compact">
-          <h4>Your account</h4>
-          <dl className="vendor-info-dl vendor-info-dl-compact">
-            <dt>Name</dt><dd>{user?.name ?? '—'}</dd>
-            <dt>Branch</dt><dd>{user?.branchName ?? '—'}</dd>
-            {user?.vendorName && (<><dt>Business</dt><dd>{user.vendorName}</dd></>)}
-          </dl>
-          <Link to={ROUTES.vendor.profile} className="vendor-kpi-link">Edit profile →</Link>
-        </section>
-        <section className="content-card vendor-info-compact">
-          <h4>My branch</h4>
-          {branchesLoading ? <p className="text-muted">Loading...</p> : branches.length === 0 ? (
-            <p className="text-muted">No branch assigned.</p>
-          ) : (
-            <>
-              {branches.map((b) => (
-                <p key={b.id} className="vendor-branch-one"><strong>{b.name}</strong>{b.address ? ` — ${b.address}` : ''}</p>
-              ))}
-              <Link to={ROUTES.vendor.branches} className="vendor-kpi-link">View branches →</Link>
-            </>
-          )}
-        </section>
-        <section className="content-card vendor-info-compact">
-          <h4>Quick links</h4>
-          <div className="vendor-quick-links">
-            <Link to={ROUTES.vendor.appointments}>Appointments</Link>
-            <Link to={ROUTES.vendor.leads}>Leads</Link>
-            <Link to={ROUTES.vendor.customers}>Customers</Link>
-            <Link to={ROUTES.vendor.memberships}>Memberships</Link>
-            <Link to={ROUTES.vendor.sales}>Sales</Link>
-            <Link to={ROUTES.vendor.profile}>Profile</Link>
-          </div>
-        </section>
-      </div>
     </div>
   );
 }

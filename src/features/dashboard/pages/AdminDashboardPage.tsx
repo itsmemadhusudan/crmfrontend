@@ -8,10 +8,7 @@ import {
   CartesianGrid,
   Tooltip,
   ResponsiveContainer,
-  PieChart,
-  Pie,
   Cell,
-  Legend,
 } from 'recharts';
 import { useAuth } from '../../../auth/hooks/useAuth';
 import { getVendors } from '../../../api/vendors';
@@ -19,6 +16,7 @@ import { getBranches } from '../../../api/branches';
 import { getSalesDashboard, getOwnerOverview, getSettlements } from '../../../api/reports';
 import type { SalesDashboard, OwnerOverviewBranch, Settlement } from '../../../types/crm';
 import type { Branch } from '../../../types/crm';
+import type { VendorListItem } from '../../../types/auth';
 import { ROUTES } from '../../../config/constants';
 import { formatCurrency } from '../../../utils/money';
 import { formatNumber } from '../../../utils/money';
@@ -50,10 +48,20 @@ export default function AdminDashboardPage() {
   const [overview, setOverview] = useState<OwnerOverviewBranch[]>([]);
   const [settlements, setSettlements] = useState<Settlement[]>([]);
   const [branches, setBranches] = useState<Branch[]>([]);
+  const [vendors, setVendors] = useState<VendorListItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [salesLoading, setSalesLoading] = useState(true);
   const [overviewLoading, setOverviewLoading] = useState(true);
+  const [settlementsLoading, setSettlementsLoading] = useState(false);
   const [error, setError] = useState('');
+
+  const loadSettlements = useCallback(() => {
+    setSettlementsLoading(true);
+    getSettlements().then((r) => {
+      setSettlementsLoading(false);
+      if (r.success && r.settlements) setSettlements(r.settlements);
+    }).catch(() => setSettlementsLoading(false));
+  }, []);
 
   const loadCounts = useCallback(() => {
     setLoading(true);
@@ -63,7 +71,10 @@ export default function AdminDashboardPage() {
       getBranches(),
     ]).then(([allRes, pendingRes, branchesRes]) => {
       setLoading(false);
-      if (allRes.success && allRes.vendors != null) setTotalVendors(allRes.vendors.length);
+      if (allRes.success && allRes.vendors != null) {
+        setTotalVendors(allRes.vendors.length);
+        setVendors(allRes.vendors);
+      }
       if (pendingRes.success && pendingRes.vendors != null) setPendingVendors(pendingRes.vendors.length);
       if (branchesRes.success && branchesRes.branches != null) {
         setTotalBranches(branchesRes.branches.length);
@@ -104,10 +115,8 @@ export default function AdminDashboardPage() {
 
   useEffect(() => {
     loadOverview();
-    getSettlements().then((r) => {
-      if (r.success && r.settlements) setSettlements(r.settlements);
-    });
-  }, [loadOverview]);
+    loadSettlements();
+  }, [loadOverview, loadSettlements]);
 
   const applyPreset = (preset: DatePreset) => {
     setDatePreset(preset);
@@ -118,21 +127,17 @@ export default function AdminDashboardPage() {
     }
   };
 
-  const chartBranchData = salesData?.byBranch?.map((x) => ({ name: x.branch, revenue: x.revenue })) ?? [];
-  const chartServiceData = salesData?.byService?.map((x) => ({ name: x.serviceCategory || 'Other', revenue: x.revenue })) ?? [];
   const chartMembershipByBranch = overview.map((o) => ({ name: o.branchName, memberships: o.membershipsSold })).filter((d) => d.memberships > 0 || overview.length <= 10);
-  const pieRevenueByBranch = (salesData?.byBranch ?? []).map((x) => ({ name: x.branch, value: x.revenue }));
   const totalLeads = overview.reduce((s, o) => s + (o.leads ?? 0), 0);
   const totalAppointments = overview.reduce((s, o) => s + (o.appointmentsThisMonth ?? 0), 0);
   const systemGrowthData = [
     { name: 'Vendors', value: totalVendors ?? 0, fill: 'var(--theme-link)' },
     { name: 'Branches', value: totalBranches ?? 0, fill: '#8b5cf6' },
-    { name: 'Memberships sold', value: salesData?.totalMemberships ?? 0, fill: '#06b6d4' },
+    { name: 'Active memberships', value: salesData?.activeMembershipCount ?? 0, fill: '#06b6d4' },
     { name: 'Total leads', value: totalLeads, fill: '#f59e0b' },
     { name: 'Appointments (month)', value: totalAppointments, fill: '#10b981' },
     { name: 'Pending approvals', value: pendingVendors ?? 0, fill: '#ef4444' },
   ].filter((d) => d.value > 0 || d.name === 'Vendors' || d.name === 'Branches');
-  const PIE_COLORS = ['#6366f1', '#8b5cf6', '#06b6d4', '#10b981', '#f59e0b', '#ec4899', '#84cc16', '#f97316'];
 
   return (
     <div className="dashboard-content admin-dashboard">
@@ -141,105 +146,44 @@ export default function AdminDashboardPage() {
           <h2>Welcome, {user?.name}</h2>
           <p>Overview of vendors, branches, sales, and performance.</p>
         </div>
-        <div className="admin-dashboard-filters">
-          <div className="filter-group">
-            <label>Period</label>
-            <div className="date-presets">
-              {(['7d', '30d', '90d'] as const).map((p) => (
-                <button
-                  key={p}
-                  type="button"
-                  className={`preset-btn ${datePreset === p ? 'active' : ''}`}
-                  onClick={() => applyPreset(p)}
-                >
-                  {p === '7d' ? '7 days' : p === '30d' ? '30 days' : '90 days'}
-                </button>
-              ))}
-            </div>
-            <div className="date-inputs">
-              <label>
-                <span>From</span>
-                <input type="date" value={from} onChange={(e) => { setFrom(e.target.value); setDatePreset('custom'); }} />
-              </label>
-              <label>
-                <span>To</span>
-                <input type="date" value={to} onChange={(e) => { setTo(e.target.value); setDatePreset('custom'); }} />
-              </label>
-            </div>
-          </div>
-          <div className="filter-group">
-            <label>Branch</label>
-            <select value={branchId} onChange={(e) => setBranchId(e.target.value)}>
-              <option value="">All branches</option>
-              {branches.map((b) => (
-                <option key={b.id} value={b.id}>{b.name}</option>
-              ))}
-            </select>
-          </div>
-          <button type="button" className="admin-dashboard-refresh" onClick={() => { loadCounts(); loadSales(); loadOverview(); }} aria-label="Refresh">
-            ↻ Refresh
-          </button>
-        </div>
       </section>
 
       {error && <div className="auth-error admin-dashboard-error">{error}</div>}
 
-      <div className="admin-dashboard-charts-section">
-      <div className="admin-dashboard-charts">
-        <section className="content-card admin-chart-card">
-          <h3>Revenue by branch</h3>
-          {salesLoading ? (
-            <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
-          ) : chartBranchData.length > 0 ? (
-            <div className="admin-chart-wrap">
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={chartBranchData} margin={{ top: 12, right: 12, left: 12, bottom: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-border)" />
-                  <XAxis dataKey="name" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} angle={-25} textAnchor="end" height={60} />
-                  <YAxis tick={{ fill: 'var(--theme-text)', fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)', borderRadius: 8 }}
-                    labelStyle={{ color: 'var(--theme-text-heading)' }}
-                    formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                    labelFormatter={(label) => `Branch: ${label}`}
-                  />
-                  <Bar dataKey="revenue" fill="var(--theme-link)" radius={[4, 4, 0, 0]} name="Revenue" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <p className="admin-chart-empty">No revenue data for this period.</p>
-          )}
-        </section>
-        <section className="content-card admin-chart-card">
-          <h3>Revenue by service category</h3>
-          {salesLoading ? (
-            <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
-          ) : chartServiceData.length > 0 ? (
-            <div className="admin-chart-wrap">
-              <ResponsiveContainer width="100%" height={280}>
-                <BarChart data={chartServiceData} margin={{ top: 12, right: 12, left: 12, bottom: 60 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-border)" />
-                  <XAxis dataKey="name" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} angle={-25} textAnchor="end" height={60} />
-                  <YAxis tick={{ fill: 'var(--theme-text)', fontSize: 12 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip
-                    contentStyle={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)', borderRadius: 8 }}
-                    labelStyle={{ color: 'var(--theme-text-heading)' }}
-                    formatter={(value: number) => [formatCurrency(value), 'Revenue']}
-                    labelFormatter={(label) => `Category: ${label}`}
-                  />
-                  <Bar dataKey="revenue" fill="var(--theme-border-accent)" radius={[4, 4, 0, 0]} name="Revenue" />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          ) : (
-            <p className="admin-chart-empty">No service revenue data for this period.</p>
-          )}
-        </section>
+      <div className="admin-dashboard-bottom">
+      <h3 className="admin-dashboard-section-title">Summary &amp; quick links</h3>
+      <div className="admin-dashboard-kpis stats-grid">
+        <div className="stat-card admin-kpi">
+          <span className="stat-value">{loading ? '…' : formatNumber(totalVendors ?? 0)}</span>
+          <span className="stat-label">Total vendors</span>
+          <Link to={ROUTES.admin.vendors} className="stat-link">View →</Link>
+        </div>
+        <div className="stat-card admin-kpi">
+          <span className="stat-value">{loading ? '…' : formatNumber(totalBranches ?? 0)}</span>
+          <span className="stat-label">Active branches</span>
+          <Link to={ROUTES.admin.branches} className="stat-link">View →</Link>
+        </div>
+        <div className="stat-card admin-kpi">
+          <span className="stat-value">{salesLoading ? '…' : formatCurrency(salesData?.totalSales ?? salesData?.totalRevenue ?? 0)}</span>
+          <span className="stat-label">Total sales</span>
+          <Link to={ROUTES.admin.sales} className="stat-link">Details →</Link>
+        </div>
+        <div className="stat-card admin-kpi">
+          <span className="stat-value">{salesLoading ? '…' : formatNumber(salesData?.activeMembershipCount ?? salesData?.totalMemberships ?? 0)}</span>
+          <span className="stat-label">Active memberships</span>
+          <Link to={ROUTES.admin.memberships} className="stat-link">View →</Link>
+        </div>
+        <div className="stat-card admin-kpi">
+          <span className="stat-value">{salesLoading ? '…' : formatNumber(salesData?.totalMemberships ?? 0)}</span>
+          <span className="stat-label">Memberships sold (period)</span>
+          <Link to={ROUTES.admin.memberships} className="stat-link">View →</Link>
+        </div>
       </div>
 
+      <div className="admin-dashboard-charts-section">
+      <h3 className="admin-dashboard-section-title">Charts</h3>
       <div className="admin-dashboard-charts">
-        <section className="content-card admin-chart-card">
+        <section className="content-card admin-chart-card admin-chart-card-full">
           <h3>Memberships by branch</h3>
           {overviewLoading ? (
             <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
@@ -263,101 +207,37 @@ export default function AdminDashboardPage() {
             <p className="admin-chart-empty">No membership data by branch.</p>
           )}
         </section>
-        <section className="content-card admin-chart-card">
-          <h3>Vendor / branch income share</h3>
-          {salesLoading ? (
+        <section className="content-card admin-chart-card admin-chart-card-full">
+          <h3>System growth & platform overview</h3>
+          {(loading || overviewLoading) ? (
             <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
-          ) : pieRevenueByBranch.length > 0 ? (
-            <div className="admin-chart-wrap">
-              <ResponsiveContainer width="100%" height={280}>
-                <PieChart>
-                  <Pie
-                    data={pieRevenueByBranch}
-                    dataKey="value"
-                    nameKey="name"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={90}
-                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
-                    labelLine={{ stroke: 'var(--theme-border)' }}
-                  >
-                    {pieRevenueByBranch.map((_, i) => (
-                      <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />
-                    ))}
-                  </Pie>
+          ) : systemGrowthData.length > 0 ? (
+            <div className="admin-chart-wrap admin-chart-wrap-horizontal">
+              <ResponsiveContainer width="100%" height={320}>
+                <BarChart data={systemGrowthData} margin={{ top: 12, right: 24, left: 12, bottom: 24 }} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-border)" />
+                  <XAxis type="number" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} allowDecimals={false} />
+                  <YAxis type="category" dataKey="name" width={120} tick={{ fill: 'var(--theme-text)', fontSize: 12 }} />
                   <Tooltip
                     contentStyle={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)', borderRadius: 8 }}
-                    formatter={(value: number) => [formatCurrency(value), 'Revenue']}
+                    formatter={(value: number) => [formatNumber(value), 'Count']}
                   />
-                  <Legend />
-                </PieChart>
+                  <Bar dataKey="value" radius={[0, 4, 4, 0]} name="Count">
+                    {systemGrowthData.map((entry, i) => (
+                      <Cell key={i} fill={entry.fill} />
+                    ))}
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             </div>
           ) : (
-            <p className="admin-chart-empty">No revenue data for this period.</p>
+            <p className="admin-chart-empty">No platform data yet.</p>
           )}
         </section>
       </div>
-
-      <section className="content-card admin-chart-card admin-chart-card-full">
-        <h3>System growth & platform overview</h3>
-        {(loading || overviewLoading) ? (
-          <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
-        ) : systemGrowthData.length > 0 ? (
-          <div className="admin-chart-wrap admin-chart-wrap-horizontal">
-            <ResponsiveContainer width="100%" height={320}>
-              <BarChart data={systemGrowthData} margin={{ top: 12, right: 24, left: 12, bottom: 24 }} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" stroke="var(--theme-border)" />
-                <XAxis type="number" tick={{ fill: 'var(--theme-text)', fontSize: 12 }} allowDecimals={false} />
-                <YAxis type="category" dataKey="name" width={120} tick={{ fill: 'var(--theme-text)', fontSize: 12 }} />
-                <Tooltip
-                  contentStyle={{ background: 'var(--theme-bg-card)', border: '1px solid var(--theme-border)', borderRadius: 8 }}
-                  formatter={(value: number) => [formatNumber(value), 'Count']}
-                />
-                <Bar dataKey="value" radius={[0, 4, 4, 0]} name="Count">
-                  {systemGrowthData.map((entry, i) => (
-                    <Cell key={i} fill={entry.fill} />
-                  ))}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        ) : (
-          <p className="admin-chart-empty">No platform data yet.</p>
-        )}
-      </section>
       </div>
 
-      <div className="admin-dashboard-bottom">
-      <h3 className="admin-dashboard-section-title">Summary &amp; quick links</h3>
-      <div className="admin-dashboard-kpis stats-grid">
-        <div className="stat-card admin-kpi">
-          <span className="stat-value">{loading ? '…' : formatNumber(totalVendors ?? 0)}</span>
-          <span className="stat-label">Total vendors</span>
-          <Link to={ROUTES.admin.vendors} className="stat-link">View →</Link>
-        </div>
-        <div className="stat-card admin-kpi">
-          <span className="stat-value">{loading ? '…' : formatNumber(totalBranches ?? 0)}</span>
-          <span className="stat-label">Active branches</span>
-          <Link to={ROUTES.admin.branches} className="stat-link">View →</Link>
-        </div>
-        <div className="stat-card admin-kpi admin-kpi-warning">
-          <span className="stat-value">{loading ? '…' : formatNumber(pendingVendors ?? 0)}</span>
-          <span className="stat-label">Pending approvals</span>
-          <Link to={ROUTES.admin.vendors} className="stat-link">Review →</Link>
-        </div>
-        <div className="stat-card admin-kpi">
-          <span className="stat-value">{salesLoading ? '…' : formatCurrency(salesData?.totalRevenue ?? 0)}</span>
-          <span className="stat-label">Revenue (period)</span>
-          <Link to={ROUTES.admin.sales} className="stat-link">Details →</Link>
-        </div>
-        <div className="stat-card admin-kpi">
-          <span className="stat-value">{salesLoading ? '…' : formatNumber(salesData?.totalMemberships ?? 0)}</span>
-          <span className="stat-label">Memberships sold</span>
-          <Link to={ROUTES.admin.memberships} className="stat-link">View →</Link>
-        </div>
-      </div>
-
+      <h3 className="admin-dashboard-section-title">Branch &amp; settlements</h3>
       <div className="admin-dashboard-tables">
         <section className="content-card admin-table-card">
           <div className="admin-table-header">
@@ -404,9 +284,14 @@ export default function AdminDashboardPage() {
         <section className="content-card admin-table-card">
           <div className="admin-table-header">
             <h3>Recent settlements</h3>
-            <Link to={ROUTES.admin.settlements} className="stat-link">View all →</Link>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+              <button type="button" className="admin-table-refresh" onClick={loadSettlements} aria-label="Refresh settlements">↻</button>
+              <Link to={ROUTES.admin.settlements} className="stat-link">View all →</Link>
+            </div>
           </div>
-          {settlements.length > 0 ? (
+          {settlementsLoading && !settlements.length ? (
+            <div className="admin-chart-loading"><div className="spinner" /><span>Loading...</span></div>
+          ) : settlements.length > 0 ? (
             <div className="admin-table-wrap">
               <table className="admin-table">
                 <thead>

@@ -17,11 +17,12 @@ const ownerNav: NavItem[] = [
   { to: ROUTES.admin.root, label: 'Dashboard', icon: '📊' },
   { to: ROUTES.admin.overview, label: 'All branches overview', icon: '👁' },
   { to: ROUTES.admin.vendors, label: 'Staff', icon: '👤' },
+  { to: ROUTES.admin.createVendor, label: 'Create Vendor/Staff', icon: '➕' },
   { to: ROUTES.admin.branches, label: 'Branches', icon: '📍' },
   { to: ROUTES.admin.sales, label: 'Sales dashboard', icon: '💰' },
   { to: ROUTES.admin.memberships, label: 'Memberships', icon: '🎫' },
   { to: ROUTES.admin.customers, label: 'Customers', icon: '👥' },
-  { to: ROUTES.admin.search, label: 'Search', icon: '🔍' },
+  { to: ROUTES.admin.packages, label: 'Packages', icon: '📦' },
   { to: ROUTES.admin.leads, label: 'Leads inbox', icon: '📥' },
   { to: ROUTES.admin.appointments, label: 'Appointments', icon: '📅' },
   { to: ROUTES.admin.settlements, label: 'Cross-branch settlements', icon: '📋' },
@@ -32,11 +33,9 @@ const ownerNav: NavItem[] = [
 
 const branchNav: NavItem[] = [
   { to: ROUTES.vendor.root, label: 'Dashboard', icon: '📊' },
-  { to: ROUTES.vendor.branches, label: 'My branch', icon: '📍' },
   { to: ROUTES.vendor.sales, label: 'Sales', icon: '💰' },
   { to: ROUTES.vendor.memberships, label: 'Memberships', icon: '🎫' },
   { to: ROUTES.vendor.customers, label: 'Customers', icon: '👥' },
-  { to: ROUTES.vendor.search, label: 'Search', icon: '🔍' },
   { to: ROUTES.vendor.leads, label: 'Leads inbox', icon: '📥' },
   { to: ROUTES.vendor.appointments, label: 'Appointments', icon: '📅' },
   { to: ROUTES.vendor.settlements, label: 'Settlements', icon: '📋' },
@@ -56,7 +55,7 @@ export function DashboardLayout({ title, navItems: navItemsProp }: DashboardLayo
   const displayTitle = title || (user?.role === 'admin' ? 'Owner Dashboard' : 'Branch Dashboard');
 
   return (
-    <div className="dashboard">
+    <div className={`dashboard ${sidebarOpen ? 'dashboard-sidebar-open' : ''}`}>
       <Topbar title={displayTitle} onMenuClick={() => setSidebarOpen((o) => !o)}>
         <ProfileMenu />
       </Topbar>

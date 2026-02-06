@@ -11,11 +11,11 @@ export async function getCustomer(id: string) {
   return apiRequest<{ customer: Customer }>(`/customers/${id}`);
 }
 
-export async function createCustomer(data: { name: string; phone: string; email?: string; membershipCardId?: string; primaryBranchId?: string; customerPackage?: string; customerPackagePrice?: number; notes?: string }) {
+export async function createCustomer(data: { name: string; phone: string; email?: string; membershipCardId?: string; primaryBranchId?: string; customerPackage?: string; customerPackagePrice?: number; customerPackageExpiry?: string; notes?: string }) {
   return apiRequest<{ customer: Customer }>('/customers', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function updateCustomer(id: string, data: Partial<Customer>) {
+export async function updateCustomer(id: string, data: Partial<Customer> & { primaryBranchId?: string | null }) {
   return apiRequest<{ customer: Customer }>(`/customers/${id}`, { method: 'PATCH', body: JSON.stringify(data) });
 }
 

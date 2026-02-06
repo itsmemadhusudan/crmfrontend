@@ -16,11 +16,14 @@ const ForgotPasswordPage = lazy(() => import('../auth/pages/ForgotPasswordPage')
 const AdminDashboardPage = lazy(() => import('../pages/admin/AdminDashboardPage').then((m) => ({ default: m.default })));
 const OwnerOverviewPage = lazy(() => import('../pages/admin/OwnerOverviewPage').then((m) => ({ default: m.default })));
 const AdminVendorsPage = lazy(() => import('../pages/admin/VendorsPage').then((m) => ({ default: m.default })));
+const AdminCreateVendorPage = lazy(() => import('../pages/admin/CreateVendorPage').then((m) => ({ default: m.default })));
 const AdminBranchesPage = lazy(() => import('../pages/admin/BranchesPage').then((m) => ({ default: m.default })));
 const AdminSalesPage = lazy(() => import('../pages/admin/SalesPage').then((m) => ({ default: m.default })));
 const AdminMembershipsPage = lazy(() => import('../pages/admin/MembershipsPage').then((m) => ({ default: m.default })));
 const AdminMembershipDetailPage = lazy(() => import('../pages/admin/MembershipDetailPage').then((m) => ({ default: m.default })));
 const AdminCustomersPage = lazy(() => import('../pages/admin/CustomersPage').then((m) => ({ default: m.default })));
+const CustomerDetailPage = lazy(() => import('../features/customers/pages/CustomerDetailPage').then((m) => ({ default: m.default })));
+const AdminPackagesPage = lazy(() => import('../pages/admin/PackagesPage').then((m) => ({ default: m.default })));
 const AdminSearchPage = lazy(() => import('../pages/admin/SearchPage').then((m) => ({ default: m.default })));
 const AdminLeadsPage = lazy(() => import('../pages/admin/LeadsPage').then((m) => ({ default: m.default })));
 const AdminLeadDetailPage = lazy(() => import('../pages/admin/LeadDetailPage').then((m) => ({ default: m.default })));
@@ -70,11 +73,14 @@ export function AppRoutes() {
           <Route index element={<AdminDashboardPage />} />
           <Route path="overview" element={<OwnerOverviewPage />} />
           <Route path="vendors" element={<AdminVendorsPage />} />
+          <Route path="create-vendor" element={<AdminCreateVendorPage />} />
           <Route path="branches" element={<AdminBranchesPage />} />
           <Route path="sales" element={<AdminSalesPage />} />
           <Route path="memberships" element={<AdminMembershipsPage />} />
           <Route path="memberships/:id" element={<AdminMembershipDetailPage />} />
           <Route path="customers" element={<AdminCustomersPage />} />
+          <Route path="customers/:id" element={<CustomerDetailPage />} />
+          <Route path="packages" element={<AdminPackagesPage />} />
           <Route path="search" element={<AdminSearchPage />} />
           <Route path="leads" element={<AdminLeadsPage />} />
           <Route path="leads/:id" element={<AdminLeadDetailPage />} />
@@ -101,6 +107,7 @@ export function AppRoutes() {
             <Route path="memberships" element={<VendorMembershipsPage />} />
             <Route path="memberships/:id" element={<VendorMembershipDetailPage />} />
             <Route path="customers" element={<VendorCustomersPage />} />
+            <Route path="customers/:id" element={<CustomerDetailPage />} />
             <Route path="search" element={<VendorSearchPage />} />
             <Route path="leads" element={<VendorLeadsPage />} />
             <Route path="leads/:id" element={<VendorLeadDetailPage />} />

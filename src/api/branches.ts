@@ -8,7 +8,7 @@ export async function getBranches(opts?: { all?: boolean }): Promise<{ success: 
   return { success: false, message: (r as { message?: string }).message };
 }
 
-export async function createBranch(data: { name: string; code?: string; address?: string }) {
+export async function createBranch(data: { name: string; code?: string; address?: string; zipCode?: string }) {
   return apiRequest<{ branch: Branch }>('/branches', { method: 'POST', body: JSON.stringify(data) });
 }
 

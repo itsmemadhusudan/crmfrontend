@@ -13,6 +13,23 @@ interface ApproveRejectResponse {
   vendor?: VendorListItem;
 }
 
+export async function createVendor(data: {
+  name: string;
+  email: string;
+  password: string;
+  branchId?: string | null;
+  vendorName?: string;
+}): Promise<{ success: boolean; vendor?: VendorListItem; message?: string }> {
+  const result = await apiRequest<{ vendor: VendorListItem }>('/vendors', {
+    method: 'POST',
+    body: JSON.stringify(data),
+  });
+  if (result.success && 'vendor' in result) {
+    return { success: true, vendor: (result as { vendor: VendorListItem }).vendor };
+  }
+  return { success: false, message: (result as { message?: string }).message };
+}
+
 export async function getVendors(status?: 'pending' | 'approved' | 'rejected'): Promise<VendorsResponse> {
   const query = status ? `?status=${status}` : '';
   const result = await apiRequest<{ vendors: VendorListItem[] }>(`/vendors${query}`);
