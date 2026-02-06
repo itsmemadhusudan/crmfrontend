@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { useAuthStore } from '../auth.store';
 import { ROUTES } from '../../config/constants';
@@ -6,6 +6,7 @@ import { AuthBackgroundAnimation } from '../components/AuthBackgroundAnimation';
 import loginBgImage from '../../images/login.jpg';
 
 const LEFT_PANEL_BG = loginBgImage;
+const BLOCKED_MESSAGE = 'Your account has been blocked. Contact admin.';
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -16,6 +17,11 @@ export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname;
+
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    if (params.get('blocked') === '1') setError(BLOCKED_MESSAGE);
+  }, [location.search]);
 
   if (user) {
     const redirect = user.role === 'admin' ? ROUTES.admin.root : ROUTES.vendor.root;
@@ -61,7 +67,9 @@ export default function LoginPage() {
           <p className="ui-social-login-welcome-sub">Welcome to Kallythreading</p>
 
           {error && (
-            <div className="ui-social-login-error" role="alert">{error}</div>
+            <div className="ui-social-login-error" role="alert">
+              {error.includes('blocked') || error.includes('Contact admin') ? BLOCKED_MESSAGE : error}
+            </div>
           )}
 
           <form onSubmit={handleSubmit} className="ui-social-login-form">

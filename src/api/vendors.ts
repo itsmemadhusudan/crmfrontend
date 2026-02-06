@@ -80,3 +80,19 @@ export async function updateVendor(
   }
   return { success: false, message: (result as { message?: string }).message };
 }
+
+export async function blockVendor(id: string): Promise<ApproveRejectResponse> {
+  const result = await apiRequest<{ vendor: VendorListItem }>(`/vendors/${id}/block`, { method: 'PATCH' });
+  if (result.success && 'vendor' in result) {
+    return { success: true, vendor: (result as { vendor: VendorListItem }).vendor };
+  }
+  return { success: false, message: (result as { message?: string }).message };
+}
+
+export async function setVendorActive(id: string): Promise<ApproveRejectResponse> {
+  const result = await apiRequest<{ vendor: VendorListItem }>(`/vendors/${id}/active`, { method: 'PATCH' });
+  if (result.success && 'vendor' in result) {
+    return { success: true, vendor: (result as { vendor: VendorListItem }).vendor };
+  }
+  return { success: false, message: (result as { message?: string }).message };
+}

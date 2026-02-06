@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from 'react';
-import { getVendors, getVendor, approveVendor, rejectVendor, updateVendor } from '../api/vendors';
+import { getVendors, getVendor, approveVendor, rejectVendor, updateVendor, blockVendor, setVendorActive } from '../api/vendors';
 import { getBranches } from '../api/branches';
 import type { VendorListItem, ApprovalStatus } from '../types/auth';
 import type { Branch } from '../types/crm';
@@ -24,6 +24,10 @@ export default function AdminVendors() {
   const [editError, setEditError] = useState('');
   const [editSaving, setEditSaving] = useState(false);
   const [assigningBranchId, setAssigningBranchId] = useState<string | null>(null);
+  const [blockingId, setBlockingId] = useState<string | null>(null);
+  const [blockConfirmVendorId, setBlockConfirmVendorId] = useState<string | null>(null);
+  const [blockConfirmInput, setBlockConfirmInput] = useState('');
+  const [blockConfirmError, setBlockConfirmError] = useState('');
 
   async function loadVendors() {
     setLoading(true);
@@ -75,6 +79,15 @@ export default function AdminVendors() {
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [selectedVendor, closeModal]);
 
+  useEffect(() => {
+    if (!blockConfirmVendorId) return;
+    function onKeyDown(e: KeyboardEvent) {
+      if (e.key === 'Escape') closeBlockConfirm();
+    }
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [blockConfirmVendorId]);
+
   async function handleApprove(id: string) {
     setActioningId(id);
     const res = await approveVendor(id);
@@ -109,6 +122,66 @@ export default function AdminVendors() {
     setAssigningBranchId(null);
     if (res.success) loadVendors();
     else setError(res.message || 'Failed to assign branch');
+  }
+
+  function openBlockConfirm(id: string) {
+    setBlockConfirmVendorId(id);
+    setBlockConfirmInput('');
+    setBlockConfirmError('');
+  }
+
+  function closeBlockConfirm() {
+    setBlockConfirmVendorId(null);
+    setBlockConfirmInput('');
+    setBlockConfirmError('');
+  }
+
+  async function handleBlockConfirmOk() {
+    if (!blockConfirmVendorId) return;
+    if (blockConfirmInput.trim() !== 'CONFIRM') {
+      setBlockConfirmError('Type CONFIRM exactly to proceed.');
+      return;
+    }
+    setBlockConfirmError('');
+    setBlockingId(blockConfirmVendorId);
+    const res = await blockVendor(blockConfirmVendorId);
+    setBlockingId(null);
+    closeBlockConfirm();
+    if (res.success) {
+      loadVendors();
+      if (selectedVendor?.id === blockConfirmVendorId) {
+        setSelectedVendor((prev) => prev ? { ...prev, isActive: false } : null);
+        if (res.vendor) setVendorDetail((prev) => prev && prev.id === blockConfirmVendorId ? { ...prev, isActive: false } : prev);
+      }
+    } else setError(res.message || 'Failed to block');
+  }
+
+  async function handleBlock(id: string) {
+    setBlockingId(id);
+    setError('');
+    const res = await blockVendor(id);
+    setBlockingId(null);
+    if (res.success) {
+      loadVendors();
+      if (selectedVendor?.id === id) {
+        setSelectedVendor((prev) => prev ? { ...prev, isActive: false } : null);
+        if (res.vendor) setVendorDetail((prev) => prev && prev.id === id ? { ...prev, isActive: false } : prev);
+      }
+    } else setError(res.message || 'Failed to block');
+  }
+
+  async function handleSetActive(id: string) {
+    setBlockingId(id);
+    setError('');
+    const res = await setVendorActive(id);
+    setBlockingId(null);
+    if (res.success) {
+      loadVendors();
+      if (selectedVendor?.id === id) {
+        setSelectedVendor((prev) => prev ? { ...prev, isActive: true } : null);
+        if (res.vendor) setVendorDetail((prev) => prev && prev.id === id ? { ...prev, isActive: true } : prev);
+      }
+    } else setError(res.message || 'Failed to activate');
   }
 
   const handleSaveVendorEdit = async (e: React.FormEvent) => {
@@ -192,7 +265,8 @@ export default function AdminVendors() {
                   <th>Email</th>
                   <th>Vendor name</th>
                   <th>Branch</th>
-                  <th>Status</th>
+                  <th>Approval</th>
+                  <th>Blocked</th>
                   <th>Registered</th>
                   <th>Actions</th>
                 </tr>
@@ -232,28 +306,56 @@ export default function AdminVendors() {
                         {v.approvalStatus}
                       </span>
                     </td>
+                    <td>
+                      <span className={`status-badge status-${v.isActive === false ? 'rejected' : 'approved'}`}>
+                        {v.isActive === false ? 'Blocked' : 'Active'}
+                      </span>
+                    </td>
                     <td>{new Date(v.createdAt).toLocaleDateString()}</td>
                     <td>
-                      {v.approvalStatus === 'pending' && (
-                        <div className="vendor-actions">
+                      <div className="vendor-actions" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.35rem', alignItems: 'center' }}>
+                        {v.approvalStatus === 'pending' && (
+                          <>
+                            <button
+                              type="button"
+                              className="btn-approve"
+                              onClick={() => handleApprove(v.id)}
+                              disabled={actioningId !== null}
+                            >
+                              {actioningId === v.id ? '…' : 'Approve'}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-reject"
+                              onClick={() => handleReject(v.id)}
+                              disabled={actioningId !== null}
+                            >
+                              {actioningId === v.id ? '…' : 'Reject'}
+                            </button>
+                          </>
+                        )}
+                        {v.isActive === false ? (
                           <button
                             type="button"
                             className="btn-approve"
-                            onClick={() => handleApprove(v.id)}
-                            disabled={actioningId !== null}
+                            onClick={() => handleSetActive(v.id)}
+                            disabled={blockingId !== null}
+                            title="Activate – user can login again"
                           >
-                            {actioningId === v.id ? '…' : 'Approve'}
+                            {blockingId === v.id ? '…' : 'Active'}
                           </button>
+                        ) : (
                           <button
                             type="button"
                             className="btn-reject"
-                            onClick={() => handleReject(v.id)}
-                            disabled={actioningId !== null}
+                            onClick={() => openBlockConfirm(v.id)}
+                            disabled={blockingId !== null}
+                            title="Block – user cannot login"
                           >
-                            {actioningId === v.id ? '…' : 'Reject'}
+                            {blockingId === v.id ? '…' : 'Block'}
                           </button>
-                        </div>
-                      )}
+                        )}
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -363,6 +465,12 @@ export default function AdminVendors() {
                       {vendorDetail.approvalStatus}
                     </span>
                   </dd>
+                  <dt>Account</dt>
+                  <dd>
+                    <span className={`status-badge status-${vendorDetail.isActive === false ? 'rejected' : 'approved'}`}>
+                      {vendorDetail.isActive === false ? 'Blocked' : 'Active'}
+                    </span>
+                  </dd>
                   <dt>Registered</dt>
                   <dd>{new Date(vendorDetail.createdAt).toLocaleString()}</dd>
                 </dl>
@@ -394,11 +502,97 @@ export default function AdminVendors() {
                       </button>
                     </>
                   )}
+                  {vendorDetail.isActive === false ? (
+                    <button
+                      type="button"
+                      className="btn-approve"
+                      onClick={() => handleSetActive(vendorDetail.id)}
+                      disabled={blockingId !== null}
+                    >
+                      {blockingId === vendorDetail.id ? '…' : 'Active'}
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="btn-reject"
+                      onClick={() => openBlockConfirm(vendorDetail.id)}
+                      disabled={blockingId !== null}
+                    >
+                      {blockingId === vendorDetail.id ? '…' : 'Block'}
+                    </button>
+                  )}
                 </div>
               </>
             ) : (
               <p className="vendors-empty">Could not load vendor details.</p>
             )}
+          </div>
+        </div>
+      )}
+
+      {blockConfirmVendorId && (
+        <div
+          className="vendor-modal-backdrop block-confirm-backdrop"
+          onClick={closeBlockConfirm}
+          role="presentation"
+        >
+          <div
+            className="vendor-modal block-confirm-modal"
+            onClick={(e) => e.stopPropagation()}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="block-confirm-title"
+            aria-describedby="block-confirm-desc"
+          >
+            <div className="vendor-modal-header block-confirm-header">
+              <h2 id="block-confirm-title">Confirm block</h2>
+              <button
+                type="button"
+                className="vendor-modal-close"
+                onClick={closeBlockConfirm}
+                aria-label="Close"
+              >
+                ×
+              </button>
+            </div>
+            <div className="block-confirm-body">
+              <p id="block-confirm-desc" className="block-confirm-message">
+                Are you sure you want to block this user? They will not be able to log in. Type <strong>CONFIRM</strong> below to proceed.
+              </p>
+              <form onSubmit={(e) => { e.preventDefault(); handleBlockConfirmOk(); }}>
+                <label className="block-confirm-label">
+                  <span className="block-confirm-label-text">Type CONFIRM</span>
+                  <input
+                    type="text"
+                    value={blockConfirmInput}
+                    onChange={(e) => { setBlockConfirmInput(e.target.value); setBlockConfirmError(''); }}
+                    className={`block-confirm-input ${blockConfirmInput.trim() === 'CONFIRM' ? 'block-confirm-input-valid' : ''} ${blockConfirmError ? 'block-confirm-input-error' : ''}`}
+                    placeholder="CONFIRM"
+                    autoComplete="off"
+                    autoFocus
+                    aria-invalid={!!blockConfirmError}
+                    aria-describedby={blockConfirmError ? 'block-confirm-err' : undefined}
+                  />
+                </label>
+                {blockConfirmError && (
+                  <p id="block-confirm-err" className="block-confirm-error" role="alert">
+                    {blockConfirmError}
+                  </p>
+                )}
+                <div className="block-confirm-actions">
+                  <button type="button" className="block-confirm-cancel" onClick={closeBlockConfirm}>
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="block-confirm-ok"
+                    disabled={blockConfirmInput.trim() !== 'CONFIRM'}
+                  >
+                    Block user
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
         </div>
       )}

@@ -20,6 +20,15 @@ export async function apiRequest<T>(
   const res = await fetch(`${API_BASE}${endpoint}`, { ...options, headers });
   const data = await res.json().catch(() => ({}));
   if (!res.ok) {
+    if (res.status === 401) {
+      localStorage.removeItem('token');
+      const msg = (data.message || '').toLowerCase();
+      if (msg.includes('blocked') || msg.includes('deactivated')) {
+        window.location.href = `${window.location.origin}/login?blocked=1`;
+        return { success: false, message: data.message || 'Request failed' };
+      }
+      window.location.href = `${window.location.origin}/login`;
+    }
     return { success: false, message: data.message || 'Request failed' };
   }
   return { success: true, ...data };

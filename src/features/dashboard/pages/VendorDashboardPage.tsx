@@ -150,7 +150,31 @@ export default function VendorDashboardPage() {
           <span className="vendor-kpi-label">My customers</span>
           <Link to={ROUTES.vendor.customers} className="vendor-kpi-link">View →</Link>
         </div>
+        <div className="vendor-kpi-card">
+          <span className="vendor-kpi-value">{data?.leadsToFollowUp?.length ?? 0}</span>
+          <span className="vendor-kpi-label">Leads to follow up</span>
+          <Link to={ROUTES.vendor.leads} className="vendor-kpi-link">Leads inbox →</Link>
+        </div>
       </section>
+
+      {data?.leadsToFollowUp && data.leadsToFollowUp.length > 0 && (
+        <section className="content-card" style={{ marginBottom: '1.5rem' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '0.75rem' }}>
+            <h3 className="vendor-dashboard-section-title" style={{ margin: 0 }}>Leads to follow up</h3>
+            <Link to={ROUTES.vendor.leads} className="filter-btn">View all →</Link>
+          </div>
+          <ul className="report-list" style={{ margin: 0, paddingLeft: '1.25rem' }}>
+            {data.leadsToFollowUp.slice(0, 10).map((l) => (
+              <li key={l.id}>
+                <Link to={ROUTES.vendor.leadDetail(l.id)}>{l.name}</Link>
+                {l.phone && ` — ${l.phone}`}
+                <span className="text-muted" style={{ marginLeft: '0.5rem' }}>({l.status})</span>
+              </li>
+            ))}
+          </ul>
+          {data.leadsToFollowUp.length > 10 && <p className="text-muted" style={{ marginTop: '0.5rem', marginBottom: 0 }}>+ {data.leadsToFollowUp.length - 10} more — <Link to={ROUTES.vendor.leads}>View all</Link></p>}
+        </section>
+      )}
 
       <h3 className="vendor-dashboard-section-title">Branch overview</h3>
       <div className="vendor-dashboard-charts-top">

@@ -66,6 +66,10 @@ export default function SettlementReportPage() {
   }, [showAddCustomer]);
 
   useEffect(() => {
+    if (showAddCustomer && !isAdmin && user?.branchId) setAddServiceTakenBranchId(user.branchId);
+  }, [showAddCustomer, isAdmin, user?.branchId]);
+
+  useEffect(() => {
     function handleClickOutside(ev: MouseEvent) {
       if (dropdownRef.current && !dropdownRef.current.contains(ev.target as Node) && nameInputRef.current && !nameInputRef.current.contains(ev.target as Node)) {
         setNameDropdownOpen(false);
@@ -111,14 +115,16 @@ export default function SettlementReportPage() {
       setAddMessage('Primary branch is required.');
       return;
     }
-    if (!addServiceTakenBranchId) {
+    const effectiveServiceTakenBranchId = isAdmin ? addServiceTakenBranchId : (user?.branchId || addServiceTakenBranchId);
+    if (!effectiveServiceTakenBranchId) {
       setAddMessage('Service taken branch is required.');
       return;
     }
-    const serviceTakenBranch = branches.find((b) => b.id === addServiceTakenBranchId);
+    const serviceTakenBranch = branches.find((b) => b.id === effectiveServiceTakenBranchId);
+    const serviceTakenName = serviceTakenBranch?.name || user?.branchName || effectiveServiceTakenBranchId;
     const notesWithService = addNotes.trim()
-      ? `${addNotes.trim()}\nService taken at: ${serviceTakenBranch?.name || addServiceTakenBranchId}`
-      : `Service taken at: ${serviceTakenBranch?.name || addServiceTakenBranchId}`;
+      ? `${addNotes.trim()}\nService taken at: ${serviceTakenName}`
+      : `Service taken at: ${serviceTakenName}`;
     setAddSubmitting(true);
     setAddMessage('');
     const res = await createCustomer({
@@ -245,10 +251,14 @@ export default function SettlementReportPage() {
                 </label>
                 <label>
                   <span>Service taken branch (required)</span>
-                  <select value={addServiceTakenBranchId} onChange={(e) => setAddServiceTakenBranchId(e.target.value)} required>
-                    <option value="">— Select —</option>
-                    {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
-                  </select>
+                  {isAdmin ? (
+                    <select value={addServiceTakenBranchId} onChange={(e) => setAddServiceTakenBranchId(e.target.value)} required>
+                      <option value="">— Select —</option>
+                      {branches.map((b) => <option key={b.id} value={b.id}>{b.name}</option>)}
+                    </select>
+                  ) : (
+                    <input type="text" readOnly value={user?.branchName || branches.find((b) => b.id === user?.branchId)?.name || 'Your branch'} style={{ background: 'var(--theme-bg)', cursor: 'default' }} />
+                  )}
                 </label>
                 <label><span>Notes (optional)</span><textarea value={addNotes} onChange={(e) => setAddNotes(e.target.value)} rows={2} /></label>
                 {addMessage && <p className="text-muted">{addMessage}</p>}

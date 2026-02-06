@@ -16,6 +16,8 @@ export default function LeadDetailPage() {
   const [error, setError] = useState('');
   const [followUpNote, setFollowUpNote] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [notesEdit, setNotesEdit] = useState('');
+  const [savingNotes, setSavingNotes] = useState(false);
   const basePath = user?.role === 'admin' ? '/admin' : '/vendor';
 
   useEffect(() => {
@@ -26,10 +28,17 @@ export default function LeadDetailPage() {
     if (!id) return;
     getLead(id).then((r) => {
       setLoading(false);
-      if (r.success && 'lead' in r) setLead((r as { lead: Lead }).lead);
-      else setError(r.message || 'Failed to load');
+      if (r.success && 'lead' in r) {
+        const l = (r as { lead: Lead }).lead;
+        setLead(l);
+        setNotesEdit(l.notes ?? '');
+      } else setError(r.message || 'Failed to load');
     });
   }, [id]);
+
+  useEffect(() => {
+    if (lead) setNotesEdit(lead.notes ?? '');
+  }, [lead?.id]);
 
   async function handleAddFollowUp(e: React.FormEvent) {
     e.preventDefault();
@@ -46,6 +55,15 @@ export default function LeadDetailPage() {
   async function handleStatusChange(newStatus: string) {
     if (!id) return;
     const res = await updateLead(id, { status: newStatus });
+    if (res.success) getLead(id).then((r) => r.success && 'lead' in r && setLead((r as { lead: Lead }).lead));
+  }
+
+  async function handleSaveNotes(e: React.FormEvent) {
+    e.preventDefault();
+    if (!id) return;
+    setSavingNotes(true);
+    const res = await updateLead(id, { notes: notesEdit.trim() || undefined });
+    setSavingNotes(false);
     if (res.success) getLead(id).then((r) => r.success && 'lead' in r && setLead((r as { lead: Lead }).lead));
   }
 
@@ -80,6 +98,8 @@ export default function LeadDetailPage() {
           <dd>{lead!.source}</dd>
           <dt>Branch</dt>
           <dd>{lead!.branch || '—'}</dd>
+          <dt>Created</dt>
+          <dd>{lead!.createdAt ? new Date(lead!.createdAt).toLocaleString() : '—'}</dd>
           <dt>Status</dt>
           <dd>
             <span className={`status-badge status-${lead!.status === 'Booked' ? 'approved' : lead!.status === 'Lost' ? 'rejected' : 'pending'}`}>{lead!.status}</span>
@@ -94,7 +114,12 @@ export default function LeadDetailPage() {
             </select>
           </dd>
           <dt>Notes</dt>
-          <dd>{lead!.notes || '—'}</dd>
+          <dd>
+            <form onSubmit={handleSaveNotes} style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem', maxWidth: '400px' }}>
+              <textarea value={notesEdit} onChange={(e) => setNotesEdit(e.target.value)} rows={3} placeholder="Notes" style={{ width: '100%', resize: 'vertical' }} />
+              <button type="submit" className="filter-btn" style={{ width: 'auto' }} disabled={savingNotes}>{savingNotes ? 'Saving…' : 'Save notes'}</button>
+            </form>
+          </dd>
         </dl>
         <h3 style={{ marginTop: '1.5rem' }}>Add follow-up</h3>
         <form onSubmit={handleAddFollowUp} className="auth-form" style={{ maxWidth: '400px' }}>

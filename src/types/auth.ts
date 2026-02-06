@@ -21,6 +21,7 @@ export interface VendorListItem {
   approvalStatus: ApprovalStatus;
   branchId?: string | null;
   branchName?: string | null;
+  isActive?: boolean;
   createdAt: string;
 }
 
