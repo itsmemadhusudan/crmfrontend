@@ -7,6 +7,13 @@ export async function getCustomers(): Promise<{ success: boolean; customers?: Cu
   return { success: false, message: (r as { message?: string }).message };
 }
 
+/** All customers in the system for name search/dropdown (e.g. Add customer form) */
+export async function getCustomersForDropdown(): Promise<{ success: boolean; customers?: (Customer & { primaryBranchId?: string | null })[]; message?: string }> {
+  const r = await apiRequest<{ customers: (Customer & { primaryBranchId?: string | null })[] }>('/customers?forDropdown=1');
+  if (r.success && 'customers' in r) return { success: true, customers: (r as { customers: (Customer & { primaryBranchId?: string | null })[] }).customers };
+  return { success: false, message: (r as { message?: string }).message };
+}
+
 export async function getCustomer(id: string) {
   return apiRequest<{ customer: Customer }>(`/customers/${id}`);
 }

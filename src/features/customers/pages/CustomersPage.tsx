@@ -43,17 +43,29 @@ export default function CustomersPage() {
       })
     : byBranch;
 
-  useEffect(() => {
+  function fetchCustomers() {
     getCustomers().then((r) => {
       setLoading(false);
       if (r.success && r.customers) setCustomers(r.customers);
       else setError(r.message || 'Failed to load');
     });
+  }
+
+  useEffect(() => {
+    fetchCustomers();
   }, []);
 
   useEffect(() => {
-    if (isAdmin) getBranches().then((r) => r.success && r.branches && setBranches(r.branches));
-  }, [isAdmin]);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') fetchCustomers();
+    };
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', onVisibilityChange);
+  }, []);
+
+  useEffect(() => {
+    getBranches({ all: true }).then((r) => r.success && r.branches && setBranches(r.branches || []));
+  }, []);
 
   async function handleCreate(e: React.FormEvent) {
     e.preventDefault();

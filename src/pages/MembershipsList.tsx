@@ -28,6 +28,7 @@ export default function MembershipsList() {
   const [createExpiryDate, setCreateExpiryDate] = useState('');
   const [createPackageId, setCreatePackageId] = useState('');
   const [createPackagePrice, setCreatePackagePrice] = useState('');
+  const [createDiscountAmount, setCreateDiscountAmount] = useState('');
   const [createPackageExpiry, setCreatePackageExpiry] = useState('');
   const [createSubmitting, setCreateSubmitting] = useState(false);
   const basePath = user?.role === 'admin' ? '/admin' : '/vendor';
@@ -69,6 +70,12 @@ export default function MembershipsList() {
     const pkgPrice = createPackageId && selectedPackage
       ? (createPackagePrice !== '' ? Number(createPackagePrice) : selectedPackage.price)
       : undefined;
+    const discount = createDiscountAmount !== '' ? Number(createDiscountAmount) : undefined;
+    if (pkgPrice != null && discount != null && (discount < 0 || discount > pkgPrice)) {
+      setError('Discount must be between 0 and total price.');
+      setCreateSubmitting(false);
+      return;
+    }
     const res = await createMembership({
       customerId: createCustomerId,
       totalCredits: credits,
@@ -77,6 +84,7 @@ export default function MembershipsList() {
       customerPackage: selectedPackage?.name,
       customerPackagePrice: pkgPrice,
       customerPackageExpiry: createPackageExpiry || undefined,
+      discountAmount: discount,
     });
     setCreateSubmitting(false);
     if (res.success) {
@@ -86,6 +94,7 @@ export default function MembershipsList() {
       setCreateExpiryDate('');
       setCreatePackageId('');
       setCreatePackagePrice('');
+      setCreateDiscountAmount('');
       setCreatePackageExpiry('');
       getMemberships({ branchId: branchId || undefined, status: status || undefined }).then((r) => r.success && 'memberships' in r && setMemberships((r as { memberships: Membership[] }).memberships));
     } else setError((res as { message?: string }).message || 'Failed to create membership');
@@ -147,12 +156,24 @@ export default function MembershipsList() {
             {createPackageId && selectedPackage && (
               <>
                 <label>
-                  <span>Package price</span>
+                  <span>Total price</span>
                   <span className="input-prefix-dollar">
                     <span className="input-prefix-symbol" aria-hidden>$</span>
                     <input type="number" min={0} step="0.01" value={createPackagePrice} onChange={(e) => setCreatePackagePrice(e.target.value)} />
                   </span>
                 </label>
+                <label>
+                  <span>Discount amount (optional)</span>
+                  <span className="input-prefix-dollar">
+                    <span className="input-prefix-symbol" aria-hidden>$</span>
+                    <input type="number" min={0} step="0.01" value={createDiscountAmount} onChange={(e) => setCreateDiscountAmount(e.target.value)} placeholder="0" />
+                  </span>
+                </label>
+                {(createPackagePrice !== '' || createDiscountAmount !== '') && (
+                  <p className="form-hint" style={{ marginTop: '0.25rem' }}>
+                    Final price: {formatCurrency(Math.max(0, (createPackagePrice !== '' ? Number(createPackagePrice) : selectedPackage.price) - (createDiscountAmount !== '' ? Number(createDiscountAmount) : 0)))}
+                  </p>
+                )}
                 <label>
                   <span>Package expiry date</span>
                   <input type="date" value={createPackageExpiry} onChange={(e) => setCreatePackageExpiry(e.target.value)} />
@@ -204,7 +225,13 @@ export default function MembershipsList() {
                   <tr key={m.id}>
                     <td><strong>{m.customer?.name || '—'}</strong> {m.customer?.phone && `(${m.customer.phone})`}</td>
                     <td className="num">{m.totalCredits} / {m.usedCredits} / {(m.remainingCredits ?? m.totalCredits - m.usedCredits)}</td>
-                    <td className="num">{m.packagePrice != null ? formatCurrency(m.packagePrice) : '—'}</td>
+                    <td className="num">
+                      {m.packagePrice != null
+                        ? (m.discountAmount != null && m.discountAmount > 0
+                          ? `${formatCurrency((m.packagePrice ?? 0) - (m.discountAmount ?? 0))} (${formatCurrency(m.discountAmount)} off)`
+                          : formatCurrency(m.packagePrice))
+                        : '—'}
+                    </td>
                     <td>{m.soldAtBranch || '—'}</td>
                     <td>{m.purchaseDate ? new Date(m.purchaseDate).toLocaleDateString() : '—'}</td>
                     <td>{m.expiryDate ? new Date(m.expiryDate).toLocaleDateString() : '—'}</td>

@@ -32,7 +32,7 @@ export default function CustomerDetailPage() {
   }, [id]);
 
   useEffect(() => {
-    if (isAdmin) getBranches().then((r) => r.success && r.branches && setBranches(r.branches || []));
+    getBranches({ all: true }).then((r) => r.success && r.branches && setBranches(r.branches || []));
   }, [isAdmin]);
 
   if (loading || !id) {

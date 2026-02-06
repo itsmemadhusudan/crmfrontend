@@ -42,6 +42,7 @@ export interface Membership {
   expiryDate?: string;
   status: string;
   packagePrice?: number;
+  discountAmount?: number;
 }
 
 export interface MembershipUsage {
@@ -51,6 +52,7 @@ export interface MembershipUsage {
   creditsUsed: number;
   usedAt: string;
   notes?: string;
+  serviceDetails?: string;
 }
 
 export interface Lead {

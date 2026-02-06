@@ -15,8 +15,12 @@ export default function MembershipDetailPage() {
   const [error, setError] = useState('');
   const [useCredits, setUseCredits] = useState(1);
   const [useNotes, setUseNotes] = useState('');
+  const [serviceDetails, setServiceDetails] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const basePath = user?.role === 'admin' ? '/admin' : '/vendor';
+  const isOtherBranchPackage = Boolean(
+    user?.branchId && membership?.soldAtBranchId && String(user.branchId) !== String(membership.soldAtBranchId)
+  );
 
   useEffect(() => {
     if (!id) return;
@@ -37,9 +41,14 @@ export default function MembershipDetailPage() {
       setError(`Only ${remaining} credit(s) remaining.`);
       return;
     }
+    const isOtherBranch = Boolean(user?.branchId && membership.soldAtBranchId && String(user.branchId) !== String(membership.soldAtBranchId));
+    if (isOtherBranch && !serviceDetails.trim()) {
+      setError('Please enter service/visit details when using a package from another branch.');
+      return;
+    }
     setSubmitting(true);
     setError('');
-    const res = await recordMembershipUsage(id, { creditsUsed: useCredits, notes: useNotes });
+    const res = await recordMembershipUsage(id, { creditsUsed: useCredits, notes: useNotes, serviceDetails: serviceDetails.trim() || undefined });
     setSubmitting(false);
     if (res.success) {
       getMembership(id).then((r) => {
@@ -48,6 +57,7 @@ export default function MembershipDetailPage() {
           setUsageHistory(r.usageHistory || []);
           setUseCredits(1);
           setUseNotes('');
+          setServiceDetails('');
         }
       });
     } else setError((res as { message?: string }).message || 'Failed to record usage');
@@ -101,10 +111,19 @@ export default function MembershipDetailPage() {
           <dd><span className={`status-badge status-${membership!.status === 'active' ? 'approved' : membership!.status === 'used' ? 'rejected' : 'pending'}`}>{membership!.status}</span></dd>
         </dl>
         {canUse && (
-          <form onSubmit={handleUse} className="auth-form" style={{ marginTop: '1.5rem', maxWidth: '320px' }}>
-            <h3>Use credits (at this branch)</h3>
+          <form onSubmit={handleUse} className="auth-form" style={{ marginTop: '1.5rem', maxWidth: '480px' }}>
+            <h3>{isOtherBranchPackage ? 'Record service (package from another branch)' : 'Use credits (at this branch)'}</h3>
+            {isOtherBranchPackage && (
+              <p className="text-muted" style={{ marginBottom: '0.75rem' }}>
+                This package was sold at <strong>{membership!.soldAtBranch}</strong>. Please enter the full service/visit details below.
+              </p>
+            )}
             {error && <div className="auth-error">{error}</div>}
             <label><span>Credits to use</span><input type="number" min={1} max={remaining} value={useCredits} onChange={(e) => setUseCredits(Number(e.target.value))} /></label>
+            <label>
+              <span>Service / visit details {isOtherBranchPackage ? '(required for other-branch package)' : '(optional)'}</span>
+              <textarea value={serviceDetails} onChange={(e) => setServiceDetails(e.target.value)} placeholder="e.g. service name, staff, date/time, any other details" rows={3} style={{ width: '100%', resize: 'vertical' }} />
+            </label>
             <label><span>Notes (optional)</span><input type="text" value={useNotes} onChange={(e) => setUseNotes(e.target.value)} placeholder="Notes" /></label>
             <button type="submit" className="auth-submit" disabled={submitting}>{submitting ? 'Recording...' : 'Record usage'}</button>
           </form>
@@ -115,7 +134,8 @@ export default function MembershipDetailPage() {
             {usageHistory.map((u) => (
               <li key={u.id}>
                 {u.usedAtBranch} — {u.creditsUsed} credit(s) — {u.usedBy && `${u.usedBy}, `}{new Date(u.usedAt).toLocaleString()}
-                {u.notes && ` — ${u.notes}`}
+                {u.serviceDetails && <><br /><span className="text-muted">Details: {u.serviceDetails}</span></>}
+                {u.notes && <> — {u.notes}</>}
               </li>
             ))}
           </ul>

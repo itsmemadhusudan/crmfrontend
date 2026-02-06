@@ -1,7 +1,8 @@
 import { apiRequest } from './client';
 
 export interface SystemSettings {
-  revenuePercentage: number;
+  revenuePercentage?: number;
+  settlementPercentage?: number;
 }
 
 export async function getSettings(): Promise<{
@@ -14,7 +15,7 @@ export async function getSettings(): Promise<{
   return { success: false, message: (r as { message?: string }).message };
 }
 
-export async function updateSettings(data: { revenuePercentage?: number }): Promise<{
+export async function updateSettings(data: { revenuePercentage?: number; settlementPercentage?: number }): Promise<{
   success: boolean;
   settings?: SystemSettings;
   message?: string;

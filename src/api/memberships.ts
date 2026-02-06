@@ -35,11 +35,12 @@ export async function createMembership(data: {
   customerPackage?: string;
   customerPackagePrice?: number;
   customerPackageExpiry?: string;
+  discountAmount?: number;
 }) {
   return apiRequest<{ membership: Membership }>('/memberships', { method: 'POST', body: JSON.stringify(data) });
 }
 
-export async function recordMembershipUsage(membershipId: string, data: { creditsUsed?: number; notes?: string }) {
+export async function recordMembershipUsage(membershipId: string, data: { creditsUsed?: number; notes?: string; serviceDetails?: string }) {
   return apiRequest<{ usage: MembershipUsage }>(`/memberships/${membershipId}/use`, { method: 'POST', body: JSON.stringify(data) });
 }
 
